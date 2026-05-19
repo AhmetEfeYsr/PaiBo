@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atlama Animasyonu</title>
+
+    <style>
+        /* Bu stiller artık JS tarafından dinamik olarak ezilecek */
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: transparent;
+            font-family: 'Roboto', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeSpeed;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            image-rendering: optimizeSpeed;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
+        }
+
+        body {
+            position: relative;
+            min-width: 100vw;
+            min-height: 100vh;
+        }
+
+        .karakter {
+            width: 100px;
+            aspect-ratio: 1;
+            background-image: url('karakter.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            position: absolute;
+            top: -150px;
+            left: -150px;
+            opacity: 0;
+            z-index: 10;
+            transition: opacity 0.3s ease;
+            will-change: transform;
+            transform: translateZ(0);
+        }
+
+        /* --- DEĞİŞİKLİK 1: Sabit 'aspect-ratio' kaldırıldı --- */
+        /* 'height' ve 'aspect-ratio' artık JS tarafından dinamik olarak hesaplanıp ayarlanacak. */
+        #havuz {
+            width: 300px;
+            background-image: url('havuz.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%) translateZ(0);
+            box-sizing: border-box;
+            transition: opacity 0.5s ease;
+            z-index: 5;
+            will-change: transform, opacity;
+            backface-visibility: hidden;
+            image-rendering: optimizeSpeed;
+            image-rendering: crisp-edges;
+        }
+
+        /* --- DEĞİŞİKLİK 1 BİTTİ --- */
+    </style>
+</head>
+
+<body>
+    <div id="havuz"></div>
+
+    <audio id="atlama-sesi" preload="metadata" style="display: none;">
+        <source id="atlama-sesi-source" src="vada.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // === AWS SERVERLESS API YAPILANDIRMASI ===
+            // Artik Python proxy'ye gerek yok. Tum mesajlar dogrudan AWS uzerinden gonderilir.
+            let chatApiReady = false; // API uzerinden mesaj gonderebilir miyiz?
+
+            const urlParams = new URLSearchParams(window.location.search);
+
+            // AWS Lambda API URL'leri (deploy sonrasi guncellenmeli)
+            const SERVERLESS_CHANNEL_API = urlParams.get('channelapi') || 'https://YOUR_API_GATEWAY.amazonaws.com/default/kick_channel_api';
+            const SERVERLESS_CHAT_API = urlParams.get('chatapi') || 'https://YOUR_API_GATEWAY.amazonaws.com/default/kick_send_message';
+
+            // Guvenlik: Bu degerler yayinciya ozeldir ve OBS URL'sine parametre olarak eklenir.
+            // broadcaster_secret hicbir zaman ag uzerinden acik gonderilmez (HMAC imzalama).
+            const broadcasterSecret = urlParams.get('secret') || '';
+            const broadcasterUserId = urlParams.get('broadcaster_user_id') || '';
+
+            if (!broadcasterSecret) {
+                console.warn('⚠️ Yayıncı secret anahtarı (secret) URL parametresinde bulunamadı. Chat mesajları gönderilemeyecek.');
+            }
+
+            const paramUserId = urlParams.get('id');
+            const paramChannelId = urlParams.get('channelid');
+            const paramChannel = urlParams.get('channel'); // Serverless API'den chatroom_id bulmak için
+            const paramAuth = urlParams.get('auth');
+            // OAuth kullanıldığı için token parametresi artık gerekli değil
+
+            // char, target ve sound parametrelerini al
+            const paramChar = urlParams.get('char');
+            const paramTarget = urlParams.get('target');
+            const paramSound = urlParams.get('sound');
+
+            // Parametre yoksa varsayılan isimleri kullan
+            const charBaseName = paramChar || 'karakter';
+            const targetBaseName = paramTarget || 'havuz';
+            const soundBaseName = paramSound || 'vada';
+
+            // Boyut parametreleri
+            const paramPoolWidth = parseInt(urlParams.get('poolwidth')) || 300;
+            const paramCharWidth = parseInt(urlParams.get('charwidth')) || 120;
+            const paramEmojiCharWidth = parseInt(urlParams.get('emojicharwidth')) || 92;
+            const paramGroupCharWidth = parseInt(urlParams.get('groupcharwidth')) || 90;
+
+            const skorGosterici = document.createElement('div');
+            skorGosterici.id = 'skor-gosterici';
+            skorGosterici.style.position = 'fixed';
+            skorGosterici.style.bottom = '10px';
+            skorGosterici.style.left = '10px';
+            skorGosterici.style.color = '#C8A2C8';
+            skorGosterici.style.fontSize = '16px';
+            skorGosterici.style.fontWeight = '500';
+            skorGosterici.style.fontFamily = "'Roboto', sans-serif";
+            skorGosterici.style.textShadow = '2px 2px 4px black';
+            skorGosterici.style.zIndex = '100';
+            skorGosterici.style.pointerEvents = 'none';
+            skorGosterici.textContent = 'En Yüksek Skor: Henüz yok';
+            document.body.appendChild(skorGosterici);
+
+            // Lisans sistemi modüler ve UX dostu bir yapı için devre dışı bırakıldı.
+            console.log(`✅ Hoşgeldiniz: ${paramUserId || 'Misafir'}`);
+
+            let dynamicAuthorizedUsers = [];
+            if (paramAuth) {
+                dynamicAuthorizedUsers = paramAuth.split(',')
+                    .map(user => user.trim().toLowerCase())
+                    .filter(user => user.length > 0);
+            }
+            if (paramUserId && !dynamicAuthorizedUsers.includes(paramUserId.toLowerCase())) {
+                dynamicAuthorizedUsers.push(paramUserId.toLowerCase());
+            }
+
+            const havuz = document.getElementById('havuz');
+            const atlamaSesi = document.getElementById('atlama-sesi');
+
+            // Ses kaynağını URL parametresine göre ayarla
+            const atlamaSesiSource = document.getElementById('atlama-sesi-source');
+            atlamaSesiSource.src = `${soundBaseName}.mp3`;
+
+            // Ses yüklenme kontrolü
+            atlamaSesi.addEventListener('canplay', () => {
+                console.log('✅ Ses dosyası yüklendi ve oynatılmaya hazır');
+            });
+            atlamaSesi.addEventListener('error', (e) => {
+                console.error(`⚠️ Ses yüklenemedi: ${soundBaseName}.mp3`, e);
+            });
+
+            atlamaSesi.load(); // Sesi yeniden yükle
+
+            // Havuzun resmini URL parametresine göre hemen ayarla
+            havuz.style.backgroundImage = `url('${targetBaseName}.png')`;
+
+            const AYARLAR = {
+                kickChatroomID: paramChannelId || 0,
+                // OAuth kullanıldığı için kickApiToken artık Python proxy tarafında yönetiliyor
+                kickWebSocketUrl: "wss://ws-us2.pusher.com/app/32cbd69e4b950bf97679?protocol=7&client=js&version=7.6.0&flash=false",
+                yetkiliListesi: dynamicAuthorizedUsers,
+
+                sikeListesi: ["c", "b", "a"],
+
+                topluAtlamaGecikmesi: 100,
+                ozelKarakterGruplari: {
+                    'grup1': { resim: '1.png', kullanicilar: ['kullanici1', 'kullanici2', 'testuser'] },
+                    'grup2': { resim: '2.png', kullanicilar: ['baska_biri', 'deneme'] },
+                    'grup3': { resim: '3.png', kullanicilar: [] }
+                },
+                testModu: false,
+                fizik: { yerCekimi: 0.05, temelHiz: 3, hizVaryasyon: 1.5, minimumAci: 15, maksimumAci: 60, minimumIvme: 0.66, maksimumIvme: 1 },
+                puanlama: {
+                    // YENİ: Bu değerler target boyutuna göre dinamik olarak hesaplanacak
+                    basariMesafeSiniri: 150,  // Varsayılan (300 / 2)
+                    puanlamaKatsayisi: 1.5   // Varsayılan (150 * 0.01)
+                }
+            };
+
+            console.log("ℹ️ Kick OAuth 2.1 kullanılıyor. Token otomatik yönetiliyor.");
+            console.log(`🔒 Yetkili kullanıcılar: ${AYARLAR.yetkiliListesi.join(', ') || 'Hiçbiri'}`);
+            if (AYARLAR.sikeListesi.length > 0) {
+                console.warn(`🎯 Şike listesi aktif: ${AYARLAR.sikeListesi.join(', ')}`);
+            }
+            // Dinamik varlıkları konsola yazdır
+            console.log(`🎨 Karakter dosyası: ${charBaseName}.png`);
+            console.log(`🎯 Hedef dosyası: ${targetBaseName}.png`);
+            console.log(`🔊 Ses dosyası: ${soundBaseName}.mp3`);
+
+            const ekranGenisligi = Math.max(window.innerWidth, document.documentElement.clientWidth) || 1920;
+            const ekranYuksekligi = Math.max(window.innerHeight, document.documentElement.clientHeight) || 1080;
+            console.log(`📏 Ekran boyutları algılandı: ${ekranGenisligi}x${ekranYuksekligi}`);
+            const temelEkranGenisligi = 1920;
+            const temelEkranYuksekligi = 1080;
+            const genislikOran = ekranGenisligi / temelEkranGenisligi;
+            const yukseklikOran = ekranYuksekligi / temelEkranYuksekligi;
+            const ortalamaOran = (genislikOran + yukseklikOran) / 2;
+            console.log(`📐 Ekran ölçeklendirme: Oran: ${ortalamaOran.toFixed(2)}`);
+            document.body.style.imageRendering = 'optimizeSpeed';
+            document.body.style.imageRendering = '-webkit-optimize-contrast';
+            console.log('🎥 OBS optimizasyonu aktif');
+
+            let havuzGizli = false;
+            let havuzGizlemeTimer = null;
+            let atlayanKullanicilar = new Set();
+            let karakterPozisyonlari = new Map();
+            let topluAtlamaAktif = false;
+            let atlamaSirasi = [];
+
+            let enIyiSkorlarMap = new Map();
+            let sonSkorlar = [];
+
+            // Target boyutu ve skorlama
+            let targetGercekGenislik = paramPoolWidth; // İsteğiniz üzerine varsayılan genişlik (300 veya URL)
+            let targetGercekYukseklik = Math.round(paramPoolWidth * (83/300)); // Bu, eski 2.16 ratio varsayılanıydı, şimdi dinamik olacak
+
+            // Target boyutunu algıla ve dinamik puanlama hesapla
+            function targetBoyutunuAlgilaVeSkorHesapla() {
+                return new Promise((resolve) => {
+                    const testImg = new Image();
+
+                    // --- DEĞİŞİKLİK 2: 'onload' fonksiyonu güncellendi ---
+                    testImg.onload = function () {
+                        // Resmin orijinal boyutlarını al
+                        const originalWidth = this.naturalWidth || this.width;
+                        const originalHeight = this.naturalHeight || this.height;
+
+                        const newBaseWidth = paramPoolWidth; // İstenen hedef genişlik
+
+                        if (originalWidth > 0) { // 0'a bölme hatasını engelle
+                            // Yeni yüksekliği en-boy oranına göre hesapla
+                            const ratio = newBaseWidth / originalWidth;
+                            const newBaseHeight = originalHeight * ratio;
+
+                            // Global değişkenleri bu yeni hesaplanmış boyutlarla güncelle
+                            targetGercekGenislik = newBaseWidth;    // 300 veya parametre
+                            targetGercekYukseklik = newBaseHeight; // Örn: 75 (eğer orijinal 600x150 ise)
+                        } else {
+                            // Resim yüklenemezse veya boyutu 0sa varsayılanlara dön
+                            targetGercekGenislik = paramPoolWidth;
+                            targetGercekYukseklik = Math.round(paramPoolWidth * (83/300)); // Orijinal varsayılan
+                        }
+                        // --- DEĞİŞİKLİK 2 BİTTİ ---
+
+                        // Dinamik puanlama hesaplaması (artık yeni boyutlara göre)
+                        // basariMesafeSiniri = hedefin genişliğinin yarısı
+                        AYARLAR.puanlama.basariMesafeSiniri = targetGercekGenislik / 2;
+                        // puanlamaKatsayisi = basariMesafeSiniri'nin %1'i
+                        AYARLAR.puanlama.puanlamaKatsayisi = AYARLAR.puanlama.basariMesafeSiniri * 0.01;
+
+                        console.log(`🎯 Target boyutu algılandı (Temel 300px genişliğe göre ayarlandı): ${targetGercekGenislik}x${targetGercekYukseklik.toFixed(0)}`);
+                        console.log(`✅ Target resmi başarıyla yüklendi: ${targetBaseName}.png (Orijinal: ${originalWidth}x${originalHeight})`);
+                        console.log(`📏 Başarı mesafe sınırı: ${AYARLAR.puanlama.basariMesafeSiniri.toFixed(1)} piksel (Target genişliği / 2)`);
+                        console.log(`📐 Puanlama katsayısı: ${AYARLAR.puanlama.puanlamaKatsayisi.toFixed(3)} (Başarı sınırının %1'i)`);
+                        resolve();
+                    };
+
+                    // --- DEĞİŞİKLİK 3: 'onerror' varsayılanları netleştirildi ---
+                    testImg.onerror = function () {
+                        console.error(`❌ Target resmi yüklenemedi: ${targetBaseName}.png`);
+                        console.warn(`⚠️ Varsayılan 300x83 boyutları kullanılıyor`);
+
+                        // Varsayılan değerleri manuel ayarla (global değişkenler zaten bu değerde ama garanti olsun)
+                        targetGercekGenislik = paramPoolWidth;
+                        targetGercekYukseklik = Math.round(paramPoolWidth * (83/300)); // Eski kodunuzdaki varsayılan
+
+                        // Varsayılan değerlerle de hesapla
+                        AYARLAR.puanlama.basariMesafeSiniri = targetGercekGenislik / 2; // 150
+                        AYARLAR.puanlama.puanlamaKatsayisi = AYARLAR.puanlama.basariMesafeSiniri * 0.01; // 1.5
+                        resolve();
+                    };
+                    // --- DEĞİŞİKLİK 3 BİTTİ ---
+
+                    console.log(`🔍 Target resmi yükleniyor: ${targetBaseName}.png`);
+                    testImg.src = `${targetBaseName}.png`;
+                });
+            }
+
+            function rastgeleHavuzKonumu() {
+                const guncelGenislik = Math.max(window.innerWidth, document.documentElement.clientWidth) || 1920;
+
+                // Burası artık doğru çalışacak:
+                // targetGercekGenislik = 300
+                // targetGercekYukseklik = (hesaplanan yükseklik)
+                const havuzGenisligi = Math.round(targetGercekGenislik * ortalamaOran);
+                const guvenliMargin = Math.round(50 * ortalamaOran);
+                const solSinir = guvenliMargin;
+                const sagSinir = guncelGenislik - havuzGenisligi - guvenliMargin;
+                const gercekSolSinir = Math.min(solSinir, sagSinir);
+                const gercekSagSinir = Math.max(solSinir, sagSinir);
+                const rastgeleX = Math.random() * (gercekSagSinir - gercekSolSinir) + gercekSolSinir;
+                const havuzYuksekligi = Math.round(targetGercekYukseklik * ortalamaOran); // Artık doğru oranı kullanıyor
+
+                havuz.style.left = rastgeleX + 'px';
+                havuz.style.bottom = '0px';
+                havuz.style.top = 'auto'; // CSS'deki top değerini override et
+                havuz.style.transform = 'none';
+                havuz.style.opacity = '1';
+                havuz.style.width = havuzGenisligi + 'px';
+                havuz.style.height = havuzYuksekligi + 'px'; // Yükseklik artık dinamik
+                havuz.style.aspectRatio = 'unset'; // CSS aspect-ratio'yu override et, yükseklik manuel ayarlanıyor
+                havuz.style.margin = '0'; // Margin'leri sıfırla
+                havuz.style.padding = '0'; // Padding'leri sıfırla
+
+                // Havuz resmini ayarla
+                havuz.style.backgroundImage = `url('${targetBaseName}.png')`;
+                havuz.style.backgroundSize = 'contain'; // Resim oranı korunsun
+                havuz.style.backgroundPosition = 'bottom center'; // Resmin altını container'ın altına hizala
+                havuz.style.backgroundRepeat = 'no-repeat'; // Resmin tekrarını önle
+
+                havuzGizli = false;
+                atlayanKullanicilar.clear();
+                if (havuzGizlemeTimer) {
+                    clearTimeout(havuzGizlemeTimer);
+                    havuzGizlemeTimer = null;
+                }
+
+                // Gerçek yüksekliği DOM'dan al ve debug bilgisi ver
+                setTimeout(() => {
+                    const gercekYukseklik = havuz.offsetHeight || Math.round(targetGercekYukseklik * ortalamaOran);
+                    console.log(`🏊 Havuz konumu: x=${rastgeleX}, Boyut: ${havuzGenisligi}x${gercekYukseklik}`);
+                    console.log(`🎨 Havuz background: ${havuz.style.backgroundImage}`);
+                    console.log(`👁️ Havuz opacity: ${havuz.style.opacity}, display: ${getComputedStyle(havuz).display}`);
+                    console.log(`📍 Havuz position: left=${havuz.style.left}, bottom=${havuz.style.bottom}`);
+                }, 50);
+            }
+
+            // Target boyutunu algıla ve başlat
+            targetBoyutunuAlgilaVeSkorHesapla().then(() => {
+                rastgeleHavuzKonumu();
+            });
+
+            function atlaAnimasyonunuBaslat(kullaniciAdi = 'Bilinmeyen', emojiId = null) {
+                const aktifKarakterSayisi = karakterPozisyonlari.size;
+                const karakterLimiti = topluAtlamaAktif ? 15 : 3;
+                if (aktifKarakterSayisi > karakterLimiti) {
+                    console.log(`⚠️ OBS optimizasyonu: Çok fazla aktif karakter (${aktifKarakterSayisi}/${karakterLimiti}), yeni atlama reddediliyor`);
+                    return;
+                }
+
+                if (!havuzGizli && atlayanKullanicilar.has(kullaniciAdi) && !topluAtlamaAktif) {
+                    console.log(`Bloklandi (Havuz): ${kullaniciAdi} bu havuz için zaten atladi.`);
+                    return;
+                }
+
+                if (havuzGizli) {
+                    rastgeleHavuzKonumu();
+                }
+                atlayanKullanicilar.add(kullaniciAdi);
+
+                if (atlamaSesi) {
+                    atlamaSesi.volume = 0.5;
+                    atlamaSesi.playbackRate = 1.6;
+                    atlamaSesi.currentTime = 0;
+                    atlamaSesi.play().catch(error => { console.warn("Ses oynatılamadı:", error); });
+                }
+
+                if (havuzGizlemeTimer) {
+                    clearTimeout(havuzGizlemeTimer);
+                }
+                havuzGizlemeTimer = setTimeout(() => {
+                    havuz.style.opacity = '0';
+                    havuzGizli = true;
+                    console.log('Havuz gizlendi - uzun süre atlama olmadı');
+                }, 30000);
+
+                const karakter = document.createElement('div');
+                karakter.className = 'karakter';
+                console.log(`🎨 Karakter elementi oluşturuldu: ${kullaniciAdi}`);
+
+                let karakterGenisligi;
+                const emojiUrl = emojiId ? `https://files.kick.com/emotes/${emojiId}/fullsize` : null;
+                let karakterBulundu = false;
+                const normalizedUsername = kullaniciAdi.toLowerCase();
+                const isSike = AYARLAR.sikeListesi.includes(normalizedUsername);
+
+                // 1. ÖNCELİK: Emoji
+                if (emojiUrl) {
+                    karakter.style.backgroundImage = `url('${emojiUrl}')`;
+                    karakterGenisligi = Math.round(paramEmojiCharWidth * ortalamaOran);
+                    console.log(`🎨 ${kullaniciAdi} - Emoji karakteri kullanılıyor: ${emojiId}`);
+                    karakterBulundu = true;
+                }
+
+                // 2. ÖNCELİK: Özel kullanıcılar
+                if (!karakterBulundu) {
+                    if (normalizedUsername === 'pairaaa') {
+                        karakter.style.backgroundImage = "url('pairaaa.png')";
+                        karakterGenisligi = Math.round(paramGroupCharWidth * ortalamaOran);
+                        console.log(`🌟 ${kullaniciAdi} - Özel karakter kullanılıyor!`);
+                        karakterBulundu = true;
+                    } else if (normalizedUsername === 'himilayk') {
+                        karakter.style.backgroundImage = "url('himilayk.png')";
+                        karakterGenisligi = Math.round(paramGroupCharWidth * ortalamaOran);
+                        console.log(`🌟 ${kullaniciAdi} - Özel karakter kullanılıyor!`);
+                        karakterBulundu = true;
+                    }
+                    else if (normalizedUsername === 'selcukinan') {
+                        karakter.style.backgroundImage = "url('çay.png')";
+                        karakterGenisligi = Math.round(paramGroupCharWidth * ortalamaOran);
+                        console.log(`🌟 ${kullaniciAdi} - Özel karakter kullanılıyor!`);
+                        karakterBulundu = true;
+                    }
+                }
+
+                // 3. ÖNCELİK: Gruplar
+                if (!karakterBulundu) {
+                    for (const grup of Object.values(AYARLAR.ozelKarakterGruplari)) {
+                        const kucukHarfKullanicilar = grup.kullanicilar.map(u => u.toLowerCase());
+                        if (kucukHarfKullanicilar.includes(normalizedUsername)) {
+                            karakter.style.backgroundImage = `url('${grup.resim}')`;
+                            karakterGenisligi = Math.round(paramGroupCharWidth * ortalamaOran);
+                            console.log(`👥 ${kullaniciAdi} - '${grup.resim}' grup karakteri kullanılıyor!`);
+                            karakterBulundu = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!karakterBulundu) {
+                    karakter.style.backgroundImage = `url('${charBaseName}.png')`;
+                    karakterGenisligi = Math.round(paramCharWidth * ortalamaOran);
+                }
+
+                // Karakter resminin yüklendiğini kontrol et
+                const karakterResimUrl = karakter.style.backgroundImage.match(/url\(['"]?([^'"]+)['"]?\)/);
+                if (karakterResimUrl && karakterResimUrl[1]) {
+                    const testImg = new Image();
+                    testImg.onload = () => {
+                        console.log(`✅ Karakter resmi yüklendi: ${karakterResimUrl[1]}`);
+                    };
+                    testImg.onerror = () => {
+                        console.error(`❌ Karakter resmi yüklenemedi: ${karakterResimUrl[1]}`);
+                        console.warn(`🔍 Dosyanın atla.html ile aynı klasörde olduğundan emin olun!`);
+                    };
+                    testImg.src = karakterResimUrl[1];
+                }
+
+                // Sadece genişlik ayarla, aspect-ratio'dan yükseklik hesaplanacak
+                karakter.style.width = karakterGenisligi + 'px';
+                // aspect-ratio CSS'de tanımlı (1:1 varsayılan)
+                karakter.style.backgroundSize = 'contain'; // Resim oranı korunsun
+                karakter.style.backgroundRepeat = 'no-repeat';
+                karakter.style.backgroundPosition = 'center';
+                karakter.style.position = 'absolute';
+                karakter.style.zIndex = '20';
+                karakter.style.opacity = '1';
+                karakter.style.willChange = 'transform, left, top';
+                karakter.style.transform = 'translateZ(0)';
+                karakter.style.backfaceVisibility = 'hidden';
+
+                const kullaniciEtiketi = document.createElement('div');
+                kullaniciEtiketi.className = 'kullanici-etiketi';
+                kullaniciEtiketi.textContent = kullaniciAdi;
+                kullaniciEtiketi.style.position = 'absolute';
+                kullaniciEtiketi.style.left = '0px';
+                kullaniciEtiketi.style.top = '0px';
+                kullaniciEtiketi.style.color = '#C8A2C8';
+                kullaniciEtiketi.style.fontSize = '12px';
+                kullaniciEtiketi.style.fontWeight = '400';
+                kullaniciEtiketi.style.fontFamily = "'Roboto', sans-serif";
+                kullaniciEtiketi.style.textShadow = '1px 1px 2px black';
+                kullaniciEtiketi.style.zIndex = '11';
+                kullaniciEtiketi.style.pointerEvents = 'none';
+                kullaniciEtiketi.style.textAlign = 'center';
+                kullaniciEtiketi.style.width = Math.round(80 * ortalamaOran) + 'px';
+                kullaniciEtiketi.style.transform = 'translateX(-50%) translateZ(0)';
+                kullaniciEtiketi.style.willChange = 'transform, left, top';
+                kullaniciEtiketi.style.backfaceVisibility = 'hidden';
+
+                document.body.appendChild(karakter);
+                document.body.appendChild(kullaniciEtiketi);
+
+                karakter.style.left = '0px';
+                karakter.style.top = '0px';
+                karakter.style.position = 'absolute';
+
+                // Yükseklik aspect-ratio'dan hesaplanacak (1:1 için genişlik = yükseklik)
+                let karakterYuksekligi = karakterGenisligi; // aspect-ratio: 1 olduğu için
+
+                const guncelYukseklik = Math.max(window.innerHeight, document.documentElement.clientHeight) || 1080;
+                const guvenliKarakterMargin = Math.round(20 * ortalamaOran);
+                const minX = guvenliKarakterMargin;
+                const maxX = ekranGenisligi - karakterGenisligi - guvenliKarakterMargin;
+                const baslangicX = Math.random() * (maxX - minX) + minX;
+                let x = baslangicX;
+                let y = -karakterYuksekligi;
+
+                if (isSike) {
+                    console.warn(`🎯 ŞİKE TESPİT EDİLDİ: ${kullaniciAdi} için 'Bilardo Atlayışı' başlatılıyor.`);
+
+                    const A = { x: baslangicX, y: y };
+
+                    const havuzLeft = parseInt(havuz.style.left) || 0;
+                    const havuzWidth = parseInt(havuz.style.width) || 300;
+                    const targetX = havuzLeft + (havuzWidth / 2) - (karakterGenisligi / 2);
+                    const targetY = guncelYukseklik - karakterYuksekligi;
+                    const B = { x: targetX, y: targetY };
+
+                    const hitLeftFirst = Math.random() > 0.5;
+                    const wall1X = hitLeftFirst ? 0 : (ekranGenisligi - karakterGenisligi);
+                    const wall2X = hitLeftFirst ? (ekranGenisligi - karakterGenisligi) : 0;
+
+                    const B_prime = { x: 2 * wall2X - B.x, y: B.y };
+                    const B_double_prime = { x: 2 * wall1X - B_prime.x, y: B_prime.y };
+
+                    let slope = (B_double_prime.y - A.y) / (B_double_prime.x - A.x);
+                    const P1 = {
+                        x: wall1X,
+                        y: A.y + slope * (wall1X - A.x)
+                    };
+
+                    let slope_P1B_prime = (B_prime.y - P1.y) / (B_prime.x - P1.x);
+                    const P2 = {
+                        x: wall2X,
+                        y: P1.y + slope_P1B_prime * (wall2X - P1.x)
+                    };
+
+                    const distance = (pA, pB) => Math.sqrt(Math.pow(pB.x - pA.x, 2) + Math.pow(pB.y - pA.y, 2));
+                    const lerp = (start, end, t) => start + (end - start) * t;
+                    const easeInOutCubic = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+                    const dist_AP1 = distance(A, P1);
+                    const dist_P1P2 = distance(P1, P2);
+                    const dist_P2B = distance(P2, B);
+                    const totalDistance = dist_AP1 + dist_P1P2 + dist_P2B;
+
+                    const sikeAtlamaSuresi = 2500;
+                    const baslangicZamani = performance.now();
+
+                    karakterPozisyonlari.set(kullaniciAdi, { karakter, kullaniciEtiketi, x: A.x, y: A.y });
+
+                    const sikeAnimasyon = (mevcutZaman) => {
+                        const mevcutPozisyon = karakterPozisyonlari.get(kullaniciAdi);
+                        if (!mevcutPozisyon) return;
+
+                        const gecenSure = mevcutZaman - baslangicZamani;
+                        let t = Math.min(gecenSure / sikeAtlamaSuresi, 1.0);
+                        const eased_t = easeInOutCubic(t);
+
+                        const currentDistance = totalDistance * eased_t;
+
+                        let currentX, currentY;
+
+                        if (currentDistance <= dist_AP1) {
+                            const segment_t = (dist_AP1 === 0) ? 1.0 : currentDistance / dist_AP1;
+                            currentX = lerp(A.x, P1.x, segment_t);
+                            currentY = lerp(A.y, P1.y, segment_t);
+                        } else if (currentDistance <= dist_AP1 + dist_P1P2) {
+                            const segment_t = (dist_P1P2 === 0) ? 1.0 : (currentDistance - dist_AP1) / dist_P1P2;
+                            currentX = lerp(P1.x, P2.x, segment_t);
+                            currentY = lerp(P1.y, P2.y, segment_t);
+                        } else {
+                            const segment_t = (dist_P2B === 0) ? 1.0 : (currentDistance - dist_AP1 - dist_P1P2) / dist_P2B;
+                            currentX = lerp(P2.x, B.x, segment_t);
+                            currentY = lerp(P2.y, B.y, segment_t);
+                        }
+
+                        mevcutPozisyon.x = currentX;
+                        mevcutPozisyon.y = currentY;
+                        karakter.style.transform = `translate3d(${Math.round(currentX)}px, ${Math.round(currentY)}px, 0)`;
+                        kullaniciEtiketi.style.transform = `translate3d(${Math.round(currentX + karakterGenisligi / 2)}px, ${Math.round(currentY - 20 * ortalamaOran)}px, 0) translateX(-50%)`;
+
+                        if (t >= 1.0) {
+                            const puan = 100;
+                            const skorMesaji = `Tebrikler @${kullaniciAdi}! Havuzu ${puan.toFixed(0)} puanla (İMKANSIZ BİR ATIŞ!) tutturdun!`;
+                            sendChatMessageToKick(skorMesaji);
+
+                            sonSkorlar.unshift({ username: kullaniciAdi, score: puan });
+                            if (sonSkorlar.length > 10) sonSkorlar.pop();
+
+                            enIyiSkorlarMap.set(kullaniciAdi, puan);
+                            console.log(`🎉 ŞİKE BAŞARILI! ${kullaniciAdi}: ${puan} puan`);
+
+                            let genelEnIyiSkor = 0;
+                            let genelEnIyiKullanici = '';
+                            for (const [user, score] of enIyiSkorlarMap.entries()) {
+                                if (score > genelEnIyiSkor) {
+                                    genelEnIyiSkor = score;
+                                    genelEnIyiKullanici = user;
+                                }
+                            }
+                            if (genelEnIyiKullanici) {
+                                skorGosterici.textContent = `En Yüksek Skor: ${genelEnIyiKullanici} - ${genelEnIyiSkor.toFixed(0)}/100`;
+                            }
+
+                            const beklemeSuresi = 3000;
+                            setTimeout(() => {
+                                karakter.style.opacity = '0';
+                                kullaniciEtiketi.style.opacity = '0';
+                                karakterPozisyonlari.delete(kullaniciAdi);
+                                setTimeout(() => {
+                                    if (karakter.parentNode) karakter.parentNode.removeChild(karakter);
+                                    if (kullaniciEtiketi.parentNode) kullaniciEtiketi.parentNode.removeChild(kullaniciEtiketi);
+                                }, 300);
+                            }, beklemeSuresi);
+                            return;
+                        }
+                        requestAnimationFrame(sikeAnimasyon);
+                    };
+                    requestAnimationFrame(sikeAnimasyon);
+
+                    return;
+                }
+
+                const yon = Math.random() > 0.5 ? 1 : -1;
+                const minAci = AYARLAR.fizik.minimumAci;
+                const maxAci = AYARLAR.fizik.maksimumAci;
+                const rastgeleTemelAci = (Math.random() * (maxAci - minAci)) + minAci;
+                const rastgeleAci = rastgeleTemelAci * yon;
+                const baslangicHiz = (AYARLAR.fizik.temelHiz + Math.random() * AYARLAR.fizik.hizVaryasyon) * ortalamaOran;
+                const yerCekimi = AYARLAR.fizik.yerCekimi * ortalamaOran;
+                const minIvme = AYARLAR.fizik.minimumIvme || 0.01;
+                const maxIvme = AYARLAR.fizik.maksimumIvme || 0.05;
+                const yatayIvmeMiktari = (Math.random() * (maxIvme - minIvme) + minIvme) * ortalamaOran;
+                const maksimumYatayHiz = 18.0 * ortalamaOran;
+                const maksimumDikeyHiz = 6.0 * ortalamaOran;
+
+                let vx = Math.sin(rastgeleAci * Math.PI / 180) * baslangicHiz;
+                let vy = (Math.abs(Math.cos(rastgeleAci * Math.PI / 180) * baslangicHiz));
+                console.log(`📍 İlk pozisyon ayarlanıyor: x=${x}, y=${y}, vx=${vx}, vy=${vy}`);
+                karakter.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+                kullaniciEtiketi.style.transform = `translate3d(${x + karakterGenisligi / 2}px, ${y - 20 * ortalamaOran}px, 0) translateX(-50%)`;
+
+                karakterPozisyonlari.set(kullaniciAdi, {
+                    x: x, y: y, vx: vx, vy: vy,
+                    yatayIvme: yatayIvmeMiktari,
+                    genislik: karakterGenisligi,
+                    yukseklik: karakterYuksekligi,
+                    karakter: karakter, kullaniciEtiketi: kullaniciEtiketi,
+                    sonCarpismaZamani: 0,
+                    sonCarpismaKullanici: null
+                });
+                console.log(`📝 Karakter pozisyonu kaydedildi: ${kullaniciAdi}`);
+
+                let sonFrameZamani = 0;
+                const hedefFPS = 60;
+                const frameSuresi = 1000 / hedefFPS;
+
+                const animasyon = (mevcutZaman) => {
+                    if (mevcutZaman - sonFrameZamani < frameSuresi) {
+                        requestAnimationFrame(animasyon);
+                        return;
+                    }
+                    sonFrameZamani = mevcutZaman;
+                    const mevcutPozisyon = karakterPozisyonlari.get(kullaniciAdi);
+                    if (!mevcutPozisyon) {
+                        return;
+                    }
+
+                    x = mevcutPozisyon.x;
+                    y = mevcutPozisyon.y;
+                    vx = mevcutPozisyon.vx;
+                    vy = mevcutPozisyon.vy;
+
+                    const deltaTime = 1.0;
+                    vy += yerCekimi * deltaTime;
+                    const ivme = mevcutPozisyon.yatayIvme || 0;
+                    if (vx > 0) { vx += ivme * deltaTime; } else if (vx < 0) { vx -= ivme * deltaTime; }
+                    x += vx * deltaTime;
+                    y += vy * deltaTime;
+                    const sinirliHiz = hizSinirla(vx, vy, maksimumYatayHiz, maksimumDikeyHiz);
+                    vx = sinirliHiz.vx;
+                    vy = sinirliHiz.vy;
+                    if (x <= 0) {
+                        const rastgeleSekmeKatsayisi = Math.random() * (1.20 - 0.95) + 0.95;
+                        vx = Math.abs(vx) * rastgeleSekmeKatsayisi;
+                        x = 0;
+                    } else if (x + karakterGenisligi >= ekranGenisligi) {
+                        const rastgeleSekmeKatsayisi = Math.random() * (1.20 - 0.95) + 0.95;
+                        vx = -Math.abs(vx) * rastgeleSekmeKatsayisi;
+                        x = ekranGenisligi - karakterGenisligi;
+                    }
+                    const carpismaSonucu = karakterCarpismaTespiti(kullaniciAdi, x, y, karakterGenisligi, karakterYuksekligi);
+                    if (carpismaSonucu.carpisma) {
+                        const digerPozisyon = carpismaSonucu.digerPozisyon;
+                        const digerKullanici = carpismaSonucu.digerKullanici;
+                        const cooldownBitti = (mevcutPozisyon.sonCarpismaKullanici !== digerKullanici) || (mevcutZaman - mevcutPozisyon.sonCarpismaZamani > 100);
+                        if (cooldownBitti && digerPozisyon) {
+                            const benimMerkezX = x + karakterGenisligi / 2;
+                            const digerMerkezX = digerPozisyon.x + karakterGenisligi / 2;
+                            const benimMerkezY = y + karakterYuksekligi / 2;
+                            const digerMerkezY = digerPozisyon.y + karakterYuksekligi / 2;
+                            const farkX = benimMerkezX - digerMerkezX;
+                            const farkY = benimMerkezY - digerMerkezY;
+                            const mesafe = Math.sqrt(farkX * farkX + farkY * farkY);
+
+                            if (mesafe < 0.1) {
+                                const rastgeleAci = Math.random() * Math.PI * 2;
+                                const itmeGucu = 3.0;
+                                x += Math.cos(rastgeleAci) * itmeGucu;
+                                y += Math.sin(rastgeleAci) * itmeGucu;
+                            }
+
+                            const toplamYariGenislik = (karakterGenisligi / 2) + ((digerPozisyon.genislik || digerPozisyon.karakter.clientWidth) / 2);
+                            const toplamYariYukseklik = (karakterYuksekligi / 2) + ((digerPozisyon.yukseklik || digerPozisyon.karakter.clientHeight) / 2);
+                            const overlapX = toplamYariGenislik - Math.abs(farkX);
+                            const overlapY = toplamYariYukseklik - Math.abs(farkY);
+
+                            const elastikiyet = 0.8;
+                            const surtunme = 0.98;
+
+                            if (overlapX < overlapY) {
+                                const itmeMiktari = (overlapX / 2) + 2.0;
+                                if (farkX > 0) {
+                                    x += itmeMiktari;
+                                    digerPozisyon.x -= itmeMiktari;
+                                } else {
+                                    x -= itmeMiktari;
+                                    digerPozisyon.x += itmeMiktari;
+                                }
+
+                                const toplamKutle = 2;
+                                const benimYeniVx = ((vx * (1 - elastikiyet) + digerPozisyon.vx * (1 + elastikiyet)) / toplamKutle) * surtunme;
+                                const digerYeniVx = ((digerPozisyon.vx * (1 - elastikiyet) + vx * (1 + elastikiyet)) / toplamKutle) * surtunme;
+
+                                vx = benimYeniVx;
+                                digerPozisyon.vx = digerYeniVx;
+
+                                const itmeHizi = 0.5 * ortalamaOran;
+                                if (farkX > 0) {
+                                    vx += itmeHizi;
+                                    digerPozisyon.vx -= itmeHizi;
+                                } else {
+                                    vx -= itmeHizi;
+                                    digerPozisyon.vx += itmeHizi;
+                                }
+                            } else {
+                                const itmeMiktari = (overlapY / 2) + 2.0;
+                                if (farkY > 0) {
+                                    y += itmeMiktari;
+                                    digerPozisyon.y -= itmeMiktari;
+                                } else {
+                                    y -= itmeMiktari;
+                                    digerPozisyon.y += itmeMiktari;
+                                }
+
+                                const toplamKutle = 2;
+                                const benimYeniVy = ((vy * (1 - elastikiyet) + digerPozisyon.vy * (1 + elastikiyet)) / toplamKutle) * surtunme;
+                                const digerYeniVy = ((digerPozisyon.vy * (1 - elastikiyet) + vy * (1 + elastikiyet)) / toplamKutle) * surtunme;
+
+                                vy = benimYeniVy;
+                                digerPozisyon.vy = digerYeniVy;
+
+                                const itmeHizi = 0.3 * ortalamaOran;
+                                if (farkY > 0) {
+                                    vy += itmeHizi;
+                                    digerPozisyon.vy -= itmeHizi;
+                                } else {
+                                    vy -= itmeHizi;
+                                    digerPozisyon.vy += itmeHizi;
+                                }
+                            }
+
+                            mevcutPozisyon.sonCarpismaZamani = mevcutZaman;
+                            mevcutPozisyon.sonCarpismaKullanici = digerKullanici;
+                            digerPozisyon.sonCarpismaZamani = mevcutZaman;
+                            digerPozisyon.sonCarpismaKullanici = kullaniciAdi;
+
+                            const digerSinirliHiz = hizSinirla(digerPozisyon.vx, digerPozisyon.vy, maksimumYatayHiz, maksimumDikeyHiz);
+                            digerPozisyon.vx = digerSinirliHiz.vx;
+                            digerPozisyon.vy = digerSinirliHiz.vy;
+                        }
+                    }
+                    mevcutPozisyon.x = x;
+                    mevcutPozisyon.y = y;
+                    mevcutPozisyon.vx = vx;
+                    mevcutPozisyon.vy = vy;
+                    karakter.style.transform = `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0)`;
+                    kullaniciEtiketi.style.transform = `translate3d(${Math.round(x + karakterGenisligi / 2)}px, ${Math.round(y - 20 * ortalamaOran)}px, 0) translateX(-50%)`;
+                    if (y + karakterYuksekligi >= guncelYukseklik) {
+                        y = guncelYukseklik - karakterYuksekligi;
+                        karakter.style.transform = `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0)`;
+                        vy = 0;
+                        vx = 0;
+                        let basariliAtlayis = false;
+                        if (!havuzGizli) {
+                            const karakterMerkez = x + karakterGenisligi / 2;
+                            const havuzLeft = parseInt(havuz.style.left) || 0;
+                            const havuzWidth = parseInt(havuz.style.width) || 298;
+                            const havuzMerkezi = havuzLeft + havuzWidth / 2;
+                            const mesafe = Math.abs(karakterMerkez - havuzMerkezi);
+
+                            // Artık doğru, dinamik olarak hesaplanmış değerleri kullanıyor
+                            const basariMesafeSiniri = AYARLAR.puanlama.basariMesafeSiniri * ortalamaOran;
+                            const puanlamaKatsayisi = AYARLAR.puanlama.puanlamaKatsayisi * ortalamaOran;
+
+                            if (mesafe < basariMesafeSiniri) {
+                                basariliAtlayis = true;
+                                // YENİ: Dinamik puanlama - target boyutuna göre otomatik ayarlanıyor
+                                const puan = Math.max(0, Math.min(100, Math.round((basariMesafeSiniri - mesafe) / puanlamaKatsayisi)));
+
+                                // Hedef boyutu bilgisi (küçük hedef için ek mesaj)
+                                let zorlukBilgisi = '';
+                                if (targetGercekGenislik < 200) { // 300px'e ölçeklenmiş temel genişlik
+                                    zorlukBilgisi = ` 🎯 Küçük hedef!`;
+                                } else if (targetGercekGenislik > 400) {
+                                    zorlukBilgisi = ` 🎪 Büyük hedef!`;
+                                }
+
+                                console.log(`🏆 HAVUZ TUTTURULDU! ${kullaniciAdi} - Puan: ${puan}, Mesafe: ${mesafe.toFixed(1)}, Target: ${targetGercekGenislik}x${targetGercekYukseklik.toFixed(0)}`);
+
+                                const skorMesaji = `Tebrikler @${kullaniciAdi}! Havuzu ${puan.toFixed(0)} puanla tutturdun!${zorlukBilgisi}`;
+                                sendChatMessageToKick(skorMesaji);
+
+                                sonSkorlar.unshift({ username: kullaniciAdi, score: puan });
+                                if (sonSkorlar.length > 10) {
+                                    sonSkorlar.pop();
+                                }
+
+                                const mevcutEnIyi = enIyiSkorlarMap.get(kullaniciAdi) || 0;
+                                if (puan > mevcutEnIyi) {
+                                    enIyiSkorlarMap.set(kullaniciAdi, puan);
+                                    console.log(`🎉 YENİ KİŞİSEL REKOR! ${kullaniciAdi}: ${puan} puan`);
+                                }
+
+                                let genelEnIyiSkor = 0;
+                                let genelEnIyiKullanici = '';
+                                for (const [user, score] of enIyiSkorlarMap.entries()) {
+                                    if (score > genelEnIyiSkor) {
+                                        genelEnIyiSkor = score;
+                                        genelEnIyiKullanici = user;
+                                    }
+                                }
+                                if (genelEnIyiKullanici) {
+                                    skorGosterici.textContent = `En Yüksek Skor: ${genelEnIyiKullanici} - ${genelEnIyiSkor.toFixed(0)}/100`;
+                                }
+
+                            } else {
+                                console.log(`💥 HAVUZ KAÇIRILDI! ${kullaniciAdi} - Mesafe: ${mesafe.toFixed(1)}`);
+                            }
+                        } else {
+                            console.log('💥 HAVUZ KAÇIRILDI! (Havuz gizliydi)');
+                        }
+                        const beklemeSuresi = basariliAtlayis ? 3000 : 100;
+                        setTimeout(() => {
+                            karakter.style.opacity = '0';
+                            kullaniciEtiketi.style.opacity = '0';
+                            karakterPozisyonlari.delete(kullaniciAdi);
+                            setTimeout(() => {
+                                if (karakter.parentNode) karakter.parentNode.removeChild(karakter);
+                                if (kullaniciEtiketi.parentNode) kullaniciEtiketi.parentNode.removeChild(kullaniciEtiketi);
+                            }, 300);
+                        }, beklemeSuresi);
+                        return;
+                    }
+                    requestAnimationFrame(animasyon);
+                };
+                requestAnimationFrame(animasyon);
+            }
+
+            function hizSinirla(vx, vy, maksimumYatayHiz, maksimumDikeyHiz) {
+                if (Math.abs(vx) > maksimumYatayHiz) { vx = vx > 0 ? maksimumYatayHiz : -maksimumYatayHiz; }
+                if (Math.abs(vy) > maksimumDikeyHiz) { vy = vy > 0 ? maksimumDikeyHiz : -maksimumDikeyHiz; }
+                return { vx, vy };
+            }
+
+            // Basit dikdörtgen çarpışma tespiti (AABB)
+            function karakterCarpismaTespiti(mevcutKullanici, x, y, karakterGenisligi, karakterYuksekligi) {
+                for (const [kullaniciAdi, pozisyon] of karakterPozisyonlari) {
+                    if (kullaniciAdi === mevcutKullanici) continue;
+                    if (!pozisyon || !pozisyon.karakter) continue;
+
+                    const digerX = pozisyon.x;
+                    const digerY = pozisyon.y;
+                    if (digerX === undefined || digerY === undefined) continue;
+
+                    const digerGenislik = pozisyon.genislik || pozisyon.karakter.clientWidth;
+                    const digerYukseklik = pozisyon.yukseklik || pozisyon.karakter.clientHeight;
+
+                    // Basit AABB (dikdörtgen) çarpışma kontrolü
+                    if (x < digerX + digerGenislik && x + karakterGenisligi > digerX &&
+                        y < digerY + digerYukseklik && y + karakterYuksekligi > digerY) {
+
+                        if (pozisyon.vx !== undefined && pozisyon.vy !== undefined) {
+                            return { carpisma: true, digerKullanici: kullaniciAdi, digerPozisyon: pozisyon };
+                        }
+                    }
+                }
+                return { carpisma: false };
+            }
+
+            async function sendChatMessageToKick(mesaj) {
+                if (!mesaj) return;
+
+                // AWS Serverless API ile güvenli mesaj gönderimi
+                if (!broadcasterSecret || !broadcasterUserId || !paramUserId) {
+                    console.warn('⚠️ Chat API yapılandırması eksik (secret, broadcaster_user_id veya id). Mesaj gönderilemedi:', mesaj);
+                    return;
+                }
+
+                try {
+                    const timestamp = Math.floor(Date.now() / 1000).toString();
+
+                    // HMAC-SHA256 imza hesapla: secret hiçbir zaman ağ üzerinden gönderilmez!
+                    // Payload: "userId:timestamp:broadcaster_user_id:message"
+                    const payload = `${paramUserId}:${timestamp}:${broadcasterUserId}:${mesaj}`;
+                    const encoder = new TextEncoder();
+                    const keyData = encoder.encode(broadcasterSecret);
+                    const msgData = encoder.encode(payload);
+
+                    const cryptoKey = await crypto.subtle.importKey(
+                        'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+                    );
+                    const signatureBuffer = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
+                    const signature = Array.from(new Uint8Array(signatureBuffer))
+                        .map(b => b.toString(16).padStart(2, '0')).join('');
+
+                    const response = await fetch(SERVERLESS_CHAT_API, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Signature': signature,
+                            'X-Timestamp': timestamp,
+                            'X-User-Id': paramUserId
+                        },
+                        body: JSON.stringify({
+                            broadcaster_user_id: broadcasterUserId,
+                            message: mesaj
+                        })
+                    });
+
+                    if (response.ok) {
+                        console.log(`📤 Mesaj AWS API üzerinden gönderildi: ${mesaj}`);
+                    } else {
+                        const err = await response.json();
+                        console.error(`❌ Chat API hatası (${response.status}):`, err.error || err);
+                    }
+                } catch (error) {
+                    console.error('❌ Chat mesajı gönderilirken hata:', error);
+                }
+            }
+
+            function siraIslet() {
+                if (atlamaSirasi.length === 0) {
+                    console.log("✅ Toplu atlama sırası tamamlandı.");
+                    return;
+                }
+                const atlayacakKisi = atlamaSirasi.shift();
+                console.log(`▶️ Sıradan işletiliyor: ${atlayacakKisi.username} (Kalan: ${atlamaSirasi.length})`);
+                atlaAnimasyonunuBaslat(atlayacakKisi.username, atlayacakKisi.emojiId);
+                setTimeout(siraIslet, AYARLAR.topluAtlamaGecikmesi);
+            }
+
+            // updateOAuthStatus: Durum göstergesi kaldırıldı, çağrılar no-op.
+            function updateOAuthStatus() {}
+
+            // Python proxy kaldırıldı. Mesaj gönderimi artık doğrudan AWS API üzerinden yapılıyor.
+            // connectToProxyServer fonksiyonu artık gerekli değil.
+
+            function connectToKickChat(chatroomId) {
+                console.log(`Kick sohbet sunucusuna bağlanılıyor: ${AYARLAR.kickWebSocketUrl}`);
+                const ws = new WebSocket(AYARLAR.kickWebSocketUrl);
+
+                ws.onopen = () => {
+                    console.log("Kick sohbet sunucusuna başarıyla bağlanıldı!");
+                    const subscribeMessage = { event: "pusher:subscribe", data: { channel: `chatrooms.${chatroomId}.v2`, auth: "" } };
+                    ws.send(JSON.stringify(subscribeMessage));
+                    console.log(`'${chatroomId}' ID'li odaya abonelik isteği gönderildi.`);
+                };
+
+                ws.onmessage = (event) => {
+                    try {
+                        const eventData = JSON.parse(event.data);
+
+                        if (eventData.event === 'pusher:ping') {
+                            ws.send(JSON.stringify({ event: 'pusher:pong' }));
+                            return;
+                        }
+
+                        if (eventData.event === 'App\\Events\\ChatMessageEvent') {
+                            const chatMessage = JSON.parse(eventData.data);
+
+                            const username = chatMessage.sender?.username || 'Bilinmeyen';
+                            const normalizedUsername = username.toLowerCase();
+                            const content = (chatMessage.content || '').trim();
+                            const cleanContent = content.toLowerCase();
+
+                            // --- MODERATÖRLERİN OTOMATİK YETKİ ALMASI ---
+                            // Kick chat mesajındaki sender bilgisinden moderatör/yayıncı kontrolü
+                            const sender = chatMessage.sender || {};
+                            const senderIdentity = sender.identity || {};
+                            const senderBadges = senderIdentity.badges || [];
+
+                            // Moderatör veya yayıncı olup olmadığını kontrol et
+                            const isModerator = (
+                                sender.is_moderator === true ||
+                                sender.is_broadcaster === true ||
+                                sender.is_owner === true ||
+                                sender.is_staff === true ||
+                                senderBadges.some(badge => {
+                                    const t = (badge.type || '').toLowerCase();
+                                    return t === 'moderator' || t === 'broadcaster' || t === 'owner' || t === 'staff' || t === 'mod';
+                                })
+                            );
+
+                            // Moderatörü otomatik olarak yetkili listesine ekle
+                            if (isModerator && !AYARLAR.yetkiliListesi.includes(normalizedUsername)) {
+                                AYARLAR.yetkiliListesi.push(normalizedUsername);
+                                console.log(`🛡️ MOD OTOMATİK YETKİ: ${username} moderatör olarak algılandı ve yetkili listesine eklendi!`);
+                                console.log(`🔒 Güncel yetkili listesi: ${AYARLAR.yetkiliListesi.join(', ')}`);
+                            }
+                            // --- MODERATÖRLERİN OTOMATİK YETKİ ALMASI BİTTİ ---
+
+                            const isYetkili = AYARLAR.yetkiliListesi.includes(normalizedUsername);
+
+                            if (isYetkili) {
+                                if (cleanContent === '!topluatla') {
+                                    topluAtlamaAktif = true;
+                                    atlamaSirasi = [];
+                                    console.warn("🟢 TOPLU ATLAMA MODU AÇIK! '!atla' komutları sıraya alınıyor.");
+                                    sendChatMessageToKick(`🟢 TOPLU ATLAMA başladı! Herkes '!atla' yazsın! Mod ${username} komutu verdiğinde hep birlikte atlayacaksınız! 🎉`);
+                                    return;
+                                }
+
+                                if (cleanContent === '!atlat') {
+                                    if (atlamaSirasi.length === 0) {
+                                        console.warn("🟡 '!atlat' komutu alındı ama sıra boş.");
+                                        sendChatMessageToKick(`⚠️ Sırada kimse yok! Önce '!topluatla' ile modu açın, herkes '!atla' yazsın.`);
+                                        topluAtlamaAktif = false;
+                                        return;
+                                    }
+                                    const kisiSayisi = atlamaSirasi.length;
+                                    topluAtlamaAktif = false;
+                                    console.warn(`🔴 TOPLU ATLAMA MODU KAPALI. ${kisiSayisi} kişilik sıra işletiliyor...`);
+                                    sendChatMessageToKick(`🚀 TOPLU ATLAMA! ${kisiSayisi} kişi aynı anda atlıyor! 💥`);
+                                    siraIslet();
+                                    return;
+                                }
+
+                                // !topluiptal komutu - toplu atlamayı iptal et
+                                if (cleanContent === '!topluiptal') {
+                                    if (topluAtlamaAktif) {
+                                        const iptalEdilen = atlamaSirasi.length;
+                                        topluAtlamaAktif = false;
+                                        atlamaSirasi = [];
+                                        console.warn(`❌ Toplu atlama iptal edildi. ${iptalEdilen} kişi sıradan çıkarıldı.`);
+                                        sendChatMessageToKick(`❌ Toplu atlama iptal edildi! (${iptalEdilen} kişi sıradaydı)`);
+                                    } else {
+                                        sendChatMessageToKick(`⚠️ Zaten aktif bir toplu atlama yok.`);
+                                    }
+                                    return;
+                                }
+                            }
+
+                            if (cleanContent === '!eniyi') {
+                                const sortedScores = Array.from(enIyiSkorlarMap.entries())
+                                    .sort((a, b) => b[1] - a[1])
+                                    .slice(0, 5);
+
+                                let chatMesaji = "🏆 En İyi 5 Skor: ";
+                                if (sortedScores.length === 0) {
+                                    chatMesaji = "Henüz başarılı bir atlayış olmadı.";
+                                } else {
+                                    const messages = sortedScores.map((entry, index) => {
+                                        return `${index + 1}. ${entry[0]} (${entry[1].toFixed(0)} Puan)`;
+                                    });
+                                    chatMesaji += messages.join(' | ');
+                                }
+                                sendChatMessageToKick(chatMesaji);
+                                return;
+
+                            } else if (cleanContent === '!son') {
+                                let chatMesaji = "⏱️ Son Başarılı Atlayışlar: ";
+                                if (sonSkorlar.length === 0) {
+                                    chatMesaji = "Henüz başarılı bir atlayış olmadı.";
+                                } else {
+                                    const messages = sonSkorlar.map((entry) => {
+                                        return `${entry.username} (${entry.score.toFixed(0)} Puan)`;
+                                    });
+                                    chatMesaji += messages.join(' | ');
+                                }
+                                sendChatMessageToKick(chatMesaji);
+                                return;
+                            }
+
+                            if (cleanContent === '!atla' || cleanContent.startsWith('!atla ')) {
+                                let emojiId = null;
+                                const emoteRegex = /\[emote:(\d+):.*?\]/;
+                                const match = content.match(emoteRegex);
+                                if (match && match[1]) { emojiId = match[1]; }
+
+                                if (topluAtlamaAktif) {
+                                    // Aynı kullanıcının birden fazla kez sıraya girmesini engelle
+                                    const zadenSirada = atlamaSirasi.some(k => k.username.toLowerCase() === normalizedUsername);
+                                    if (zadenSirada) {
+                                        console.log(`⚠️ ${username} zaten sırada, tekrar eklenmedi.`);
+                                    } else {
+                                        atlamaSirasi.push({ username: username, emojiId: emojiId });
+                                        console.log(`QUEUE: ${username} sıraya eklendi. (Sıradaki kişi: ${atlamaSirasi.length})`);
+                                    }
+                                } else {
+                                    console.log(`🚀 '!atla' komutu algılandı: ${username}`);
+                                    atlaAnimasyonunuBaslat(username, emojiId);
+                                }
+                            }
+
+                            // !sira komutu - kaç kişi sırada olduğunu göster
+                            if (cleanContent === '!sira' && topluAtlamaAktif) {
+                                const siraListesi = atlamaSirasi.map(k => k.username).join(', ');
+                                sendChatMessageToKick(`📋 Sırada ${atlamaSirasi.length} kişi var: ${siraListesi || 'Henüz kimse yok'}`);
+                            }
+                        }
+                    } catch (error) {
+                        console.error("Sohbet mesajı işlenirken hata:", error, event.data);
+                    }
+                };
+
+                ws.onclose = () => {
+                    console.log("Kick sohbet bağlantısı kesildi. 3 saniye sonra tekrar denenecek.");
+                    setTimeout(() => connectToKickChat(chatroomId), 3000);
+                };
+
+                ws.onerror = (error) => {
+                    console.error("Kick WebSocket hatası:", error);
+                    ws.close();
+                };
+            }
+
+            function ekranBoyutlariniGuncelle() {
+                const yeniGenislik = Math.max(window.innerWidth, document.documentElement.clientWidth) || 1920;
+                const yeniYukseklik = Math.max(window.innerHeight, document.documentElement.clientHeight) || 1080;
+                if (yeniGenislik !== ekranGenisligi || yeniYukseklik !== ekranYuksekligi) {
+                    console.log('📏 Ekran boyutu değişti, tüm ayarların güncellenmesi için sayfa yenileniyor...');
+                    location.reload();
+                }
+            }
+            window.addEventListener('resize', ekranBoyutlariniGuncelle);
+            window.addEventListener('orientationchange', ekranBoyutlariniGuncelle);
+            window.testAtla = function (kullaniciAdi = 'TestKullanici', emojiId = null) {
+                console.log(`🧪 Manuel test atlama: ${kullaniciAdi} (Emoji: ${emojiId})`);
+                atlaAnimasyonunuBaslat(kullaniciAdi, emojiId);
+            };
+            window.havuzPozisyonu = function () { console.log(havuz.getBoundingClientRect()); };
+            window.karakterPozisyonlari = function () { console.log(`👥 Aktif karakterler:`, karakterPozisyonlari.size, karakterPozisyonlari); };
+
+            console.log('');
+            console.log('='.repeat(60));
+            console.log('🔐 KICK AWS SERVERLESS - GÜVENLİ MESAJ SİSTEMİ');
+            console.log('='.repeat(60));
+            console.log('');
+            console.log('📋 Güvenlik Katmanları:');
+            console.log('  🔒 HMAC-SHA256 İmzalama  : Secret ağ üzerinden gönderilmez');
+            console.log('  🕐 Replay Attack Koruması : 5dk eski istekler reddedilir');
+            console.log('  🚦 Rate Limiting          : 2sn/mesaj sınırı');
+            console.log('  🛡️  Token İzolasyonu       : Yayıncılar arası erişim yok');
+            console.log('');
+            console.log('📋 Test Komutları:');
+            console.log('  ➤ testAtla()              : Test atlama');
+            console.log('  ➤ testAtla("isim")        : İsimli test');
+            console.log('='.repeat(60));
+            console.log('');
+
+            async function baslat() {
+                let chatroomId = AYARLAR.kickChatroomID;
+
+                // Eğer channelid yoksa ama channel verilmişse, AWS API'den bulmaya çalış
+                if (!chatroomId && paramChannel) {
+                    try {
+                        console.log(`🔍 '${paramChannel}' kanalı için AWS API'den Chatroom ID aranıyor...`);
+                        skorGosterici.textContent = `Kanal ID'si alınıyor...`;
+                        
+                        const response = await fetch(`${SERVERLESS_CHANNEL_API}?channel=${paramChannel}`);
+                        const data = await response.json();
+                        
+                        if (data && data.chatroom_id) {
+                            chatroomId = data.chatroom_id;
+                            AYARLAR.kickChatroomID = chatroomId;
+                            console.log(`✅ Kanal bulundu! Chatroom ID: ${chatroomId}`);
+                            if (data.broadcaster_user_id) {
+                                console.log(`✅ Broadcaster User ID: ${data.broadcaster_user_id}`);
+                            }
+                            skorGosterici.textContent = 'En Yüksek Skor: Henüz yok';
+                        } else {
+                            throw new Error('API yanıtında chatroom_id bulunamadı.');
+                        }
+                    } catch (error) {
+                        console.error('❌ Kanal bilgisi alınamadı (API Hatası):', error);
+                    }
+                }
+
+                // Chat API hazır mı?
+                if (broadcasterSecret && broadcasterUserId && paramUserId) {
+                    chatApiReady = true;
+                    console.log('✅ Chat API hazır. Mesajlar AWS üzerinden güvenli şekilde gönderilecek.');
+                } else {
+                    console.warn('⚠️ Chat API yapılandırması eksik. Mesaj gönderilmeyecek.');
+                    console.warn('  Gerekli URL parametreleri: secret, broadcaster_user_id, id');
+                }
+
+                if (chatroomId && chatroomId != 0) {
+                    console.log(`Dinamik Chatroom ID ${chatroomId} ile bağlanılıyor...`);
+                    connectToKickChat(chatroomId);
+                } else {
+                    console.error("!!! BAŞLATMA BAŞARISIZ: URL'de 'channelid' veya 'channel' parametresi eksik.");
+                    skorGosterici.textContent = `HATA: URL'de 'channelid' veya 'channel' parametresi eksik!`;
+                    skorGosterici.style.color = 'red';
+                    skorGosterici.style.fontSize = '24px';
+                }
+            }
+
+            baslat();
+
+        });
+    </script>
+</body>
+
+</html>

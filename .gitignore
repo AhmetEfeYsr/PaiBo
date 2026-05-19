@@ -1,0 +1,23 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# AWS Lambda Zip Files
+*.zip
+
+# Mac/OSX
+.DS_Store
+
+# Environment Variables
+.env
+.env.local
+
+# Editor directories and files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

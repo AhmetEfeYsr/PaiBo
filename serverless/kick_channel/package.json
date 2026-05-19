@@ -1,0 +1,8 @@
+{
+  "name": "kick-channel-lambda",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "got-scraping": "^4.0.0"
+  }
+}
