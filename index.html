@@ -408,14 +408,6 @@
                         <small>Kick girişinden sonra otomatik doldurulur.</small>
                     </div>
                     <div class="form-group">
-                        <label for="channelApiUrl">Channel API Gateway URL</label>
-                        <input type="text" id="channelApiUrl" placeholder="https://....execute-api.region.amazonaws.com/default/kick_channel_api">
-                    </div>
-                    <div class="form-group">
-                        <label for="chatApiUrl">Chat API Gateway URL</label>
-                        <input type="text" id="chatApiUrl" placeholder="https://....execute-api.region.amazonaws.com/default/kick_send_message">
-                    </div>
-                    <div class="form-group">
                         <label for="authList">Yetkili Listesi (auth)</label>
                         <input type="text" id="authList" placeholder="kendi_adin,mod1,mod2">
                         <small><code>!topluatla</code> komutunu kullanabilecek kişiler listesi. Virgülle ayırın.</small>
@@ -564,10 +556,6 @@
         const AWS_CHAT_API_URL = "https://yxdvdtpy8l.execute-api.eu-central-1.amazonaws.com/default/kick_send_message"; // Chat API Gateway URL'si
 
         document.addEventListener('DOMContentLoaded', () => {
-            
-            // AWS URL'lerini otomatik olarak inputlara doldur
-            document.getElementById('channelApiUrl').value = AWS_CHANNEL_API_URL;
-            document.getElementById('chatApiUrl').value = AWS_CHAT_API_URL;
 
             // --- KICK OAUTH MANTIĞI ---
             const kickLoginButton = document.getElementById('kickLoginButton');
@@ -706,13 +694,7 @@
                 params.set('channel', channelName);
                 params.set('broadcaster_user_id', broadcasterUserId);
 
-                // API Linkleri (varsa)
-                const channelApi = document.getElementById('channelApiUrl').value.trim();
-                if (channelApi) params.set('channelapi', channelApi);
-
-                const chatApi = document.getElementById('chatApiUrl').value.trim();
-                if (chatApi) params.set('chatapi', chatApi);
-
+                // Yetkili listesi
                 const authList = document.getElementById('authList').value.trim();
                 if (authList) {
                     params.set('auth', authList);

@@ -94,9 +94,9 @@
 
             const urlParams = new URLSearchParams(window.location.search);
 
-            // AWS Lambda API URL'leri (deploy sonrasi guncellenmeli)
-            const SERVERLESS_CHANNEL_API = urlParams.get('channelapi') || 'https://YOUR_API_GATEWAY.amazonaws.com/default/kick_channel_api';
-            const SERVERLESS_CHAT_API = urlParams.get('chatapi') || 'https://YOUR_API_GATEWAY.amazonaws.com/default/kick_send_message';
+            // AWS Lambda API URL'leri (Sabitlendi)
+            const SERVERLESS_CHANNEL_API = 'https://u80v6j87kj.execute-api.eu-central-1.amazonaws.com/default/kick_channel_api';
+            const SERVERLESS_CHAT_API = 'https://yxdvdtpy8l.execute-api.eu-central-1.amazonaws.com/default/kick_send_message';
 
             // Guvenlik: Bu degerler yayinciya ozeldir ve OBS URL'sine parametre olarak eklenir.
             // broadcaster_secret hicbir zaman ag uzerinden acik gonderilmez (HMAC imzalama).
