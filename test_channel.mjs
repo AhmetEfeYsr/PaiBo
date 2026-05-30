@@ -11,8 +11,11 @@ async function test() {
             responseType: 'json'
         });
         const data = response.body;
-        console.log("Channel ID (broadcaster_user_id):", data.id || data.user_id);
-        console.log("Chatroom ID:", data.chatroom?.id);
+        console.log("Keys of body:", Object.keys(data));
+        console.log("data.id:", data.id);
+        console.log("data.user_id:", data.user_id);
+        console.log("data.slug:", data.slug);
+        console.log("data.chatroom:", data.chatroom);
     } catch (e) {
         console.error(e.message);
     }

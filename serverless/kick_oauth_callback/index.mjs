@@ -11,26 +11,41 @@ const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 
 export const handler = async (event) => {
+    let clientRedirectBase = "https://bot.pairaaa.com/index.html";
+    let userId = "";
+    let broadcasterUserId = "";
+
     try {
         const queryParams = event.queryStringParameters || {};
         const code = queryParams.code;
-        const state = queryParams.state; // Örn: "pairaaa|25274829"
+        const state = queryParams.state; // Örn: "pairaaa|25274829|https://bot.pairaaa.com/index.html"
+
+        if (state && state.includes('|')) {
+            const parts = state.split('|');
+            userId = parts[0] || "";
+            broadcasterUserId = parts[1] || "";
+            if (parts[2]) {
+                clientRedirectBase = parts[2];
+            }
+        }
 
         if (!code) {
             return {
-                statusCode: 400,
-                body: "OAuth yetkilendirme kodu bulunamadı."
+                statusCode: 302,
+                headers: {
+                    Location: `${clientRedirectBase}#success=false&error=${encodeURIComponent("OAuth yetkilendirme kodu bulunamadı.")}`
+                }
             };
         }
 
-        if (!state || !state.includes('|')) {
+        if (!userId || !broadcasterUserId) {
             return {
-                statusCode: 400,
-                body: "Geçersiz state parametresi. Kanal adı ve ID eksik."
+                statusCode: 302,
+                headers: {
+                    Location: `${clientRedirectBase}#success=false&error=${encodeURIComponent("Geçersiz state parametresi. Kanal adı ve ID eksik.")}`
+                }
             };
         }
-
-        const [userId, broadcasterUserId] = state.split('|');
 
         // 1. Kick API'sine gidip 'code' değerini 'token' ile takas edelim
         const tokenResponse = await fetch("https://id.kick.com/oauth/token", {
@@ -50,7 +65,12 @@ export const handler = async (event) => {
         if (!tokenResponse.ok) {
             const err = await tokenResponse.text();
             console.error("Token alınamadı:", err);
-            return { statusCode: tokenResponse.status, body: "Kick API'den token alınamadı." };
+            return {
+                statusCode: 302,
+                headers: {
+                    Location: `${clientRedirectBase}#success=false&error=${encodeURIComponent("Kick API'den token alınamadı.")}`
+                }
+            };
         }
 
         const tokenData = await tokenResponse.json();
@@ -72,12 +92,9 @@ export const handler = async (event) => {
             }
         }));
 
-        // 4. Kullanıcıyı başarıyla index.html'e geri yönlendir ve secret'ı ona ver
-        // Uygulamanızın yayınlandığı adrese yönlendirecek:
-        const BASE_URL = "https://atla.pairaaa.com"; 
-        
+        // 4. Kullanıcıyı başarıyla geri yönlendir ve secret'ı ona ver
         // Güvenlik: secret'ı hash (#) ile gönderiyoruz ki sunucu loglarına düşmesin, sadece tarayıcı okuyabilsin.
-        const redirectUrl = `${BASE_URL}/index.html#success=true&channel=${userId}&buid=${broadcasterUserId}&secret=${broadcasterSecret}`;
+        const redirectUrl = `${clientRedirectBase}#success=true&channel=${userId}&buid=${broadcasterUserId}&secret=${broadcasterSecret}`;
 
         return {
             statusCode: 302, // Yönlendirme (Redirect)
@@ -89,8 +106,10 @@ export const handler = async (event) => {
     } catch (error) {
         console.error("Callback hatası:", error);
         return {
-            statusCode: 500,
-            body: "Sunucu hatası oluştu."
+            statusCode: 302,
+            headers: {
+                Location: `${clientRedirectBase}#success=false&error=${encodeURIComponent("Sunucu hatası oluştu.")}`
+            }
         };
     }
 };

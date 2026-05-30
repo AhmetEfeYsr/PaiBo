@@ -21,29 +21,35 @@ export const handler = async (event) => {
   try {
     console.log("🔄 Batch Token yenileme işlemi başlatıldı...");
 
-    // 1. DynamoDB'den yenilenmesi gereken 100 kullanıcıyı çek
-    // Gerçek bir senaryoda "GSI (Global Secondary Index)" kullanarak 
-    // "sonYenilenmeZamani" en eski olan 100 kişiyi Query ile çekmek en doğrusudur.
-    // Şimdilik basit bir Scan + Limit kullanıyoruz.
-    const scanParams = {
-      TableName: TABLE_NAME,
-      Limit: 100
-    };
-    
-    const { Items } = await docClient.send(new ScanCommand(scanParams));
+    let allItems = [];
+    let lastEvaluatedKey = undefined;
 
-    if (!Items || Items.length === 0) {
+    do {
+      const scanParams = {
+        TableName: TABLE_NAME,
+        Limit: 100,
+        ExclusiveStartKey: lastEvaluatedKey
+      };
+      
+      const response = await docClient.send(new ScanCommand(scanParams));
+      if (response.Items && response.Items.length > 0) {
+        allItems = allItems.concat(response.Items);
+      }
+      lastEvaluatedKey = response.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+
+    if (allItems.length === 0) {
       console.log("Yenilenecek kullanıcı bulunamadı.");
       return { statusCode: 200, body: "İşlem yapılacak kullanıcı yok." };
     }
 
-    console.log(`${Items.length} yayıncı için token yenileme başlıyor...`);
+    console.log(`${allItems.length} yayıncı için token yenileme başlıyor...`);
 
     let basarili = 0;
     let basarisiz = 0;
 
     // 2. Her kullanıcı için token yenileme isteği at (Rate limit için sırayla)
-    for (const user of Items) {
+    for (const user of allItems) {
       if (!user.refresh_token) continue;
 
       try {

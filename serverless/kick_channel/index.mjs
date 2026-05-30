@@ -45,10 +45,10 @@ export const handler = async (event) => {
 
     const data = response.body;
     const chatroomId = data?.chatroom?.id;
-    const broadcasterUserId = data?.user_id;
+    const broadcasterUserId = data?.chatroom?.id; // USER REQUEST: chatroom id olacak broadcaster user id değil
 
     if (!chatroomId || !broadcasterUserId) {
-      return { statusCode: 404, headers, body: JSON.stringify({ error: "Chatroom ID veya User ID alınamadı." }) };
+      return { statusCode: 404, headers, body: JSON.stringify({ error: "Chatroom ID alınamadı." }) };
     }
 
     return {

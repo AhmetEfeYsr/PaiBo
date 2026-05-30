@@ -5,10 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Atlama Animasyonu</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 
     <style>
         /* Bu stiller artık JS tarafından dinamik olarak ezilecek */
-        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
 
         html,
         body {
@@ -27,7 +29,6 @@
             image-rendering: optimizeSpeed;
             image-rendering: -webkit-optimize-contrast;
             image-rendering: crisp-edges;
-            image-rendering: pixelated;
         }
 
         body {
@@ -75,6 +76,86 @@
         }
 
         /* --- DEĞİŞİKLİK 1 BİTTİ --- */
+
+        /* Glassmorphic Widget Container */
+        .widget-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            background: rgba(18, 18, 30, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 2px solid rgba(200, 162, 216, 0.3);
+            border-radius: 16px;
+            padding: 16px;
+            color: #fff;
+            font-family: 'Roboto', sans-serif;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            z-index: 200;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+        }
+        
+        .widget-container.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .widget-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+
+        .widget-title {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            background: linear-gradient(45deg, #C8A2C8, #ff00ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .widget-timer {
+            font-size: 14px;
+            font-weight: 700;
+            color: #ff00ff;
+            background: rgba(255, 0, 255, 0.1);
+            padding: 2px 8px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 0, 255, 0.3);
+        }
+
+        .widget-body {
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+
+        .widget-word-pattern {
+            font-size: 28px;
+            font-weight: 900;
+            text-align: center;
+            letter-spacing: 2px;
+            color: #ff00ff;
+            text-shadow: 0 0 10px rgba(255, 0, 255, 0.5);
+            margin: 12px 0;
+        }
+
+        .widget-stats {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
     </style>
 </head>
 
@@ -90,13 +171,12 @@
 
             // === AWS SERVERLESS API YAPILANDIRMASI ===
             // Artik Python proxy'ye gerek yok. Tum mesajlar dogrudan AWS uzerinden gonderilir.
-            let chatApiReady = false; // API uzerinden mesaj gonderebilir miyiz?
 
             const urlParams = new URLSearchParams(window.location.search);
 
             // AWS Lambda API URL'leri (Sabitlendi)
-            const SERVERLESS_CHANNEL_API = 'https://u80v6j87kj.execute-api.eu-central-1.amazonaws.com/default/kick_channel_api';
-            const SERVERLESS_CHAT_API = 'https://yxdvdtpy8l.execute-api.eu-central-1.amazonaws.com/default/kick_send_message';
+            const SERVERLESS_CHANNEL_API = 'https://9zdnkqnc90.execute-api.eu-north-1.amazonaws.com/default/kick_channel';
+            const SERVERLESS_CHAT_API = 'https://nbgqqa1530.execute-api.eu-north-1.amazonaws.com/default/kick_send_message';
 
             // Guvenlik: Bu degerler yayinciya ozeldir ve OBS URL'sine parametre olarak eklenir.
             // broadcaster_secret hicbir zaman ag uzerinden acik gonderilmez (HMAC imzalama).
@@ -147,6 +227,7 @@
             // Lisans sistemi modüler ve UX dostu bir yapı için devre dışı bırakıldı.
             console.log(`✅ Hoşgeldiniz: ${paramUserId || 'Misafir'}`);
 
+            let currentAccessToken = '';
             let dynamicAuthorizedUsers = [];
             if (paramAuth) {
                 dynamicAuthorizedUsers = paramAuth.split(',')
@@ -183,12 +264,12 @@
                 kickWebSocketUrl: "wss://ws-us2.pusher.com/app/32cbd69e4b950bf97679?protocol=7&client=js&version=7.6.0&flash=false",
                 yetkiliListesi: dynamicAuthorizedUsers,
 
-                sikeListesi: ["c", "b", "a"],
+                sikeListesi: [],
 
                 topluAtlamaGecikmesi: 100,
                 ozelKarakterGruplari: {
-                    'grup1': { resim: '1.png', kullanicilar: ['kullanici1', 'kullanici2', 'testuser'] },
-                    'grup2': { resim: '2.png', kullanicilar: ['baska_biri', 'deneme'] },
+                    'grup1': { resim: '1.png', kullanicilar: [] },
+                    'grup2': { resim: '2.png', kullanicilar: [] },
                     'grup3': { resim: '3.png', kullanicilar: [] }
                 },
                 testModu: false,
@@ -197,8 +278,488 @@
                     // YENİ: Bu değerler target boyutuna göre dinamik olarak hesaplanacak
                     basariMesafeSiniri: 150,  // Varsayılan (300 / 2)
                     puanlamaKatsayisi: 1.5   // Varsayılan (150 * 0.01)
-                }
             };
+
+            // ==========================================
+            // === PAIRABOT WAL & RPG ENGINE IMPLEMENTATION ===
+            // ==========================================
+
+            // === RPG & GAME STATE ===
+            const rpgProfiles = new Map();   // key: lowercase username -> profile
+            const rpgRelations = new Map();  // key: "user1<>user2" -> status ("MARRIED" | "ENGAGED")
+            const rpgSocial = new Map();     // key: "user1<>user2" -> { affinity, hostility }
+            let underAttackMode = false;
+            
+            // Proposals for marriages and engagements
+            const pendingMarriageProposals = new Map();  // key: target_lower -> { sender, ts }
+            const pendingEngagementProposals = new Map(); // key: target_lower -> { sender, ts }
+            
+            // Trivia Game State
+            let triviaActive = false;
+            let triviaQuestion = null;
+            let triviaAnswer = "";
+            let triviaWinners = [];
+            let triviaTimer = null;
+            
+            // Word Game State
+            let wordGameActive = false;
+            let wordGamePattern = "";
+            let wordGameWinners = [];
+            let usedWords = new Set();
+            let wordGameTimer = null;
+            let turkishWordsSet = new Set(); // Loaded from kelimeler.json if available
+
+            // Cooldowns
+            const commandCooldowns = new Map();
+
+            // Load kelimeler.json if it exists
+            async function loadWordDatabase() {
+                try {
+                    const response = await fetch('kelimeler.json');
+                    if (response.ok) {
+                        const words = await response.json();
+                        if (Array.isArray(words)) {
+                            turkishWordsSet = new Set(words.map(w => w.trim().toLowerCase()));
+                            console.log(`📚 Kelime veri tabanı yüklendi. Toplam ${turkishWordsSet.size} kelime.`);
+                        }
+                    }
+                } catch (e) {
+                    console.log("ℹ️ Kelime veri tabanı (kelimeler.json) bulunamadı. Kelime oyunu için temel kontrol kullanılacak.");
+                }
+            }
+            loadWordDatabase();
+
+            // --- WIDGET HELPER FUNCTIONS ---
+            const widget = document.createElement('div');
+            widget.id = 'game-widget';
+            widget.className = 'widget-container';
+            widget.innerHTML = `
+                <div class="widget-header">
+                    <span id="widget-title" class="widget-title">Oyun</span>
+                    <span id="widget-timer" class="widget-timer">30s</span>
+                </div>
+                <div id="widget-body" class="widget-body"></div>
+                <div id="widget-footer" class="widget-stats"></div>
+            `;
+            document.body.appendChild(widget);
+
+            function showWidget(title, bodyHtml, timerVal, footerText = '') {
+                document.getElementById('widget-title').textContent = title;
+                document.getElementById('widget-timer').textContent = `${timerVal}s`;
+                document.getElementById('widget-body').innerHTML = bodyHtml;
+                document.getElementById('widget-footer').textContent = footerText;
+                widget.classList.add('active');
+            }
+
+            function updateWidgetTimer(val) {
+                const timerEl = document.getElementById('widget-timer');
+                if (timerEl) timerEl.textContent = `${val}s`;
+            }
+
+            function updateWidgetFooter(text) {
+                const footerEl = document.getElementById('widget-footer');
+                if (footerEl) footerEl.textContent = text;
+            }
+
+            function hideWidget() {
+                widget.classList.remove('active');
+            }
+
+            // --- RPG UTILS ---
+            function getOrCreateProfile(username) {
+                const key = username.toLowerCase();
+                if (!rpgProfiles.has(key)) {
+                    rpgProfiles.set(key, {
+                        username: username,
+                        puan: 0,
+                        seviye: 1,
+                        envanter: [],
+                        health: 100,
+                        lastJump: 0
+                    });
+                }
+                return rpgProfiles.get(key);
+            }
+
+            function getRelationshipKey(user1, user2) {
+                return [user1.toLowerCase(), user2.toLowerCase()].sort().join("<>");
+            }
+
+            function getMarriedPartner(username) {
+                const keyLower = username.toLowerCase();
+                for (const [key, val] of rpgRelations.entries()) {
+                    if (val === "MARRIED") {
+                        const parts = key.split("<>");
+                        if (parts[0] === keyLower) return parts[1];
+                        if (parts[1] === keyLower) return parts[0];
+                    }
+                }
+                return null;
+            }
+
+            function getEngagedPartner(username) {
+                const keyLower = username.toLowerCase();
+                for (const [key, val] of rpgRelations.entries()) {
+                    if (val === "ENGAGED") {
+                        const parts = key.split("<>");
+                        if (parts[0] === keyLower) return parts[1];
+                        if (parts[1] === keyLower) return parts[0];
+                    }
+                }
+                return null;
+            }
+
+            function isAllCaps(text) {
+                const letters = text.replace(/[^a-zA-ZğüşıöçĞÜŞİÖÇ]/g, '');
+                if (letters.length < 5) return false;
+                return letters === letters.toUpperCase();
+            }
+
+            function checkCommandCooldown(username, command) {
+                const key = `${username.toLowerCase()}:${command.toLowerCase()}`;
+                const now = Date.now();
+                const lastTime = commandCooldowns.get(key) || 0;
+                if (now - lastTime < 5000) {
+                    return false;
+                }
+                commandCooldowns.set(key, now);
+                return true;
+            }
+
+            // --- WAL DB REPLAY HANDLER ---
+            function handleIncomingWALEvent(event, isReplaying = false) {
+                if (!event || !event.type) return;
+
+                switch (event.type) {
+                    case "SCORE": {
+                        const { user, score } = event;
+                        const currentBest = enIyiSkorlarMap.get(user) || 0;
+                        if (score > currentBest) {
+                            enIyiSkorlarMap.set(user, score);
+                        }
+                        sonSkorlar.unshift({ username: user, score: score });
+                        if (sonSkorlar.length > 10) sonSkorlar.pop();
+                        break;
+                    }
+                    case "RPG_POINT_CHANGE": {
+                        const { user, amount } = event;
+                        const changeAmount = Number(amount);
+                        if (!isNaN(changeAmount)) {
+                            const profile = getOrCreateProfile(user);
+                            profile.puan = Math.max(0, profile.puan + changeAmount);
+                            
+                            let needed = profile.seviye * 100;
+                            while (profile.puan >= needed) {
+                                profile.puan -= needed;
+                                profile.seviye += 1;
+                                needed = profile.seviye * 100;
+                                if (!isReplaying) {
+                                    sendChatMessageToKick(`🎉 @${user} seviye atladı! Yeni Seviye: ${profile.seviye}!`);
+                                }
+                            }
+                        }
+                        break;
+                    }
+                    case "RPG_INVENTORY": {
+                        const { user, item, action } = event;
+                        const profile = getOrCreateProfile(user);
+                        if (action === "ADD") {
+                            profile.envanter.push(item);
+                        } else if (action === "REMOVE") {
+                            const idx = profile.envanter.indexOf(item);
+                            if (idx !== -1) {
+                                profile.envanter.splice(idx, 1);
+                            }
+                        }
+                        break;
+                    }
+                    case "RPG_RELATION": {
+                        const { user1, user2, status } = event;
+                        const key = getRelationshipKey(user1, user2);
+                        if (status === "NONE") {
+                            rpgRelations.delete(key);
+                        } else {
+                            rpgRelations.set(key, status);
+                        }
+                        break;
+                    }
+                    case "RPG_HEALTH": {
+                        const { user, health } = event;
+                        const profile = getOrCreateProfile(user);
+                        const parsedHealth = Number(health);
+                        profile.health = Math.max(0, Math.min(100, isNaN(parsedHealth) ? 100 : parsedHealth));
+                        break;
+                    }
+                    case "RPG_SOCIAL": {
+                        const { user1, user2, affinity, hostility } = event;
+                        const key = getRelationshipKey(user1, user2);
+                        if (!rpgSocial.has(key)) {
+                            rpgSocial.set(key, { affinity: 0, hostility: 0 });
+                        }
+                        const s = rpgSocial.get(key);
+                        s.affinity = Math.max(0, s.affinity + (affinity || 0));
+                        s.hostility = Math.max(0, s.hostility + (hostility || 0));
+                        break;
+                    }
+                    case "UNDER_ATTACK": {
+                        underAttackMode = event.active;
+                        break;
+                    }
+                }
+
+                if (!isReplaying) {
+                    updateGlobalLeaderboardUI();
+                }
+            }
+
+            function updateGlobalLeaderboardUI() {
+                let genelEnIyiSkor = 0;
+                let genelEnIyiKullanici = '';
+                for (const [user, score] of enIyiSkorlarMap.entries()) {
+                    if (score > genelEnIyiSkor) {
+                        genelEnIyiSkor = score;
+                        genelEnIyiKullanici = user;
+                    }
+                }
+                if (genelEnIyiKullanici) {
+                    skorGosterici.textContent = `En Yüksek Skor: ${genelEnIyiKullanici} - ${genelEnIyiSkor.toFixed(0)}/100`;
+                }
+            }
+
+            // --- WAL STORAGE ENGINE ---
+            class PairaWAL {
+                constructor() {
+                    this.dbName = "PairaBotDB";
+                    this.storeName = "wal_logs";
+                    this.opfsFileName = "paira_wal.log";
+                    this.fileHandle = null;
+                    this.opfsFileHandle = null;
+                    this.db = null;
+                    this.storageType = "none";
+                    this.channel = new BroadcastChannel("paira_wal_sync");
+                    this.writeQueue = Promise.resolve();
+                }
+
+                async init() {
+                    await this.initIndexedDB();
+
+                    // 1. Try File System Access API
+                    try {
+                        const storedHandle = await this.getStoredFileHandle();
+                        if (storedHandle) {
+                            const opts = { mode: 'readwrite' };
+                            if ((await storedHandle.queryPermission(opts)) === 'granted') {
+                                this.fileHandle = storedHandle;
+                                this.storageType = "file";
+                                console.log("📝 WAL initialized using Local File System.");
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("File System Access API failed:", e);
+                    }
+
+                    // 2. Try OPFS
+                    if (this.storageType === "none") {
+                        try {
+                            if (navigator.storage && navigator.storage.getDirectory) {
+                                const root = await navigator.storage.getDirectory();
+                                this.opfsFileHandle = await root.getFileHandle(this.opfsFileName, { create: true });
+                                this.storageType = "opfs";
+                                console.log("📝 WAL initialized using OPFS.");
+                            }
+                        } catch (e) {
+                            console.warn("OPFS failed:", e);
+                        }
+                    }
+
+                    // 3. Fallback to IDB
+                    if (this.storageType === "none") {
+                        this.storageType = "idb";
+                        console.log("📝 WAL initialized using IndexedDB.");
+                    }
+
+                    this.channel.onmessage = (event) => {
+                        if (event.data && event.data.type === "WAL_APPEND") {
+                            handleIncomingWALEvent(event.data.payload, false);
+                        }
+                    };
+
+                    const logs = await this.readAll();
+                    console.log(`Replaying ${logs.length} WAL log entries...`);
+                    for (const log of logs) {
+                        handleIncomingWALEvent(log, true);
+                    }
+                    updateGlobalLeaderboardUI();
+                }
+
+                async initIndexedDB() {
+                    return new Promise((resolve, reject) => {
+                        const request = indexedDB.open(this.dbName, 1);
+                        request.onupgradeneeded = (e) => {
+                            const db = e.target.result;
+                            if (!db.objectStoreNames.contains(this.storeName)) {
+                                db.createObjectStore(this.storeName, { keyPath: "id", autoIncrement: true });
+                            }
+                            if (!db.objectStoreNames.contains("settings")) {
+                                db.createObjectStore("settings");
+                            }
+                        };
+                        request.onsuccess = (e) => {
+                            this.db = e.target.result;
+                            resolve();
+                        };
+                        request.onerror = (e) => reject(e);
+                    });
+                }
+
+                async getStoredFileHandle() {
+                    return new Promise((resolve) => {
+                        if (!this.db) return resolve(null);
+                        const tx = this.db.transaction("settings", "readonly");
+                        const store = tx.objectStore("settings");
+                        const req = store.get("file_handle");
+                        req.onsuccess = () => resolve(req.result || null);
+                        req.onerror = () => resolve(null);
+                    });
+                }
+
+                async storeFileHandle(handle) {
+                    return new Promise((resolve) => {
+                        if (!this.db) return resolve();
+                        const tx = this.db.transaction("settings", "readwrite");
+                        const store = tx.objectStore("settings");
+                        const req = store.put(handle, "file_handle");
+                        req.onsuccess = () => resolve();
+                        req.onerror = () => resolve();
+                    });
+                }
+
+                async append(payload) {
+                    this.writeQueue = this.writeQueue.then(async () => {
+                        await this._executeAppend(payload);
+                    }).catch(err => {
+                        console.error("WAL append serialization queue error:", err);
+                    });
+                    return this.writeQueue;
+                }
+
+                async _executeAppend(payload) {
+                    const logEntry = {
+                        ...payload,
+                        ts: Date.now()
+                    };
+
+                    if (this.storageType === "file" && this.fileHandle) {
+                        try {
+                            const file = await this.fileHandle.getFile();
+                            const writable = await this.fileHandle.createWritable({ keepExistingData: true });
+                            await writable.seek(file.size);
+                            await writable.write(JSON.stringify(logEntry) + "\n");
+                            await writable.close();
+                        } catch (e) {
+                            try {
+                                const file = await this.fileHandle.getFile();
+                                const text = await file.text();
+                                const writable = await this.fileHandle.createWritable();
+                                await writable.write(text + JSON.stringify(logEntry) + "\n");
+                                await writable.close();
+                            } catch (err) {
+                                console.error("Error writing file, fallback to IDB:", err);
+                                await this.writeToIDB(logEntry);
+                            }
+                        }
+                    } else if (this.storageType === "opfs" && this.opfsFileHandle) {
+                        try {
+                            const file = await this.opfsFileHandle.getFile();
+                            const writable = await this.opfsFileHandle.createWritable({ keepExistingData: true });
+                            await writable.seek(file.size);
+                            await writable.write(JSON.stringify(logEntry) + "\n");
+                            await writable.close();
+                        } catch (e) {
+                            try {
+                                const file = await this.opfsFileHandle.getFile();
+                                const text = await file.text();
+                                const writable = await this.opfsFileHandle.createWritable();
+                                await writable.write(text + JSON.stringify(logEntry) + "\n");
+                                await writable.close();
+                            } catch (err) {
+                                console.error("Error writing OPFS, fallback to IDB:", err);
+                                await this.writeToIDB(logEntry);
+                            }
+                        }
+                    } else {
+                        await this.writeToIDB(logEntry);
+                    }
+
+                    handleIncomingWALEvent(logEntry, false);
+
+                    this.channel.postMessage({
+                        type: "WAL_APPEND",
+                        payload: logEntry
+                    });
+                }
+
+                async writeToIDB(logEntry) {
+                    return new Promise((resolve) => {
+                        if (!this.db) return resolve();
+                        const tx = this.db.transaction(this.storeName, "readwrite");
+                        const store = tx.objectStore(this.storeName);
+                        store.add({ data: JSON.stringify(logEntry) });
+                        tx.oncomplete = () => resolve();
+                        tx.onerror = tx.onabort = () => {
+                            console.error("IndexedDB write failed");
+                            resolve();
+                        };
+                    });
+                }
+
+                async readAll() {
+                    const logs = [];
+                    if (this.storageType === "file" && this.fileHandle) {
+                        try {
+                            const file = await this.fileHandle.getFile();
+                            const text = await file.text();
+                            const lines = text.split("\n");
+                            for (const line of lines) {
+                                if (line.trim()) logs.push(JSON.parse(line));
+                            }
+                            return logs;
+                        } catch (e) {
+                            console.error("Error reading file WAL:", e);
+                        }
+                    }
+
+                    if (this.storageType === "opfs" && this.opfsFileHandle) {
+                        try {
+                            const file = await this.opfsFileHandle.getFile();
+                            const text = await file.text();
+                            const lines = text.split("\n");
+                            for (const line of lines) {
+                                if (line.trim()) logs.push(JSON.parse(line));
+                            }
+                            return logs;
+                        } catch (e) {
+                            console.error("Error reading OPFS WAL:", e);
+                        }
+                    }
+
+                    return new Promise((resolve) => {
+                        if (!this.db) return resolve([]);
+                        const tx = this.db.transaction(this.storeName, "readonly");
+                        const store = tx.objectStore(this.storeName);
+                        const req = store.getAll();
+                        req.onsuccess = () => {
+                            const results = req.result || [];
+                            const parsed = results.map(r => JSON.parse(r.data));
+                            resolve(parsed);
+                        };
+                        req.onerror = () => resolve([]);
+                    });
+                }
+            }
+
+            const PairaWALInstance = new PairaWAL();
+            window.PairaWAL = PairaWALInstance; // Expose globally for panel and testing
 
             console.log("ℹ️ Kick OAuth 2.1 kullanılıyor. Token otomatik yönetiliyor.");
             console.log(`🔒 Yetkili kullanıcılar: ${AYARLAR.yetkiliListesi.join(', ') || 'Hiçbiri'}`);
@@ -551,7 +1112,7 @@
                     const sikeAtlamaSuresi = 2500;
                     const baslangicZamani = performance.now();
 
-                    karakterPozisyonlari.set(kullaniciAdi, { karakter, kullaniciEtiketi, x: A.x, y: A.y });
+                    karakterPozisyonlari.set(kullaniciAdi, { karakter, kullaniciEtiketi, x: A.x, y: A.y, genislik: karakterGenisligi, yukseklik: karakterYuksekligi });
 
                     const sikeAnimasyon = (mevcutZaman) => {
                         const mevcutPozisyon = karakterPozisyonlari.get(kullaniciAdi);
@@ -589,23 +1150,9 @@
                             const skorMesaji = `Tebrikler @${kullaniciAdi}! Havuzu ${puan.toFixed(0)} puanla (İMKANSIZ BİR ATIŞ!) tutturdun!`;
                             sendChatMessageToKick(skorMesaji);
 
-                            sonSkorlar.unshift({ username: kullaniciAdi, score: puan });
-                            if (sonSkorlar.length > 10) sonSkorlar.pop();
-
-                            enIyiSkorlarMap.set(kullaniciAdi, puan);
+                            PairaWALInstance.append({ type: "SCORE", user: kullaniciAdi, score: puan });
+                            PairaWALInstance.append({ type: "RPG_POINT_CHANGE", user: kullaniciAdi, amount: puan, reason: "sike_jump" });
                             console.log(`🎉 ŞİKE BAŞARILI! ${kullaniciAdi}: ${puan} puan`);
-
-                            let genelEnIyiSkor = 0;
-                            let genelEnIyiKullanici = '';
-                            for (const [user, score] of enIyiSkorlarMap.entries()) {
-                                if (score > genelEnIyiSkor) {
-                                    genelEnIyiSkor = score;
-                                    genelEnIyiKullanici = user;
-                                }
-                            }
-                            if (genelEnIyiKullanici) {
-                                skorGosterici.textContent = `En Yüksek Skor: ${genelEnIyiKullanici} - ${genelEnIyiSkor.toFixed(0)}/100`;
-                            }
 
                             const beklemeSuresi = 3000;
                             setTimeout(() => {
@@ -626,11 +1173,19 @@
                     return;
                 }
 
+                const profile = getOrCreateProfile(kullaniciAdi);
+                const healthFactor = profile.health / 100;
+                let angleDev = 0;
+                if (healthFactor < 1.0) {
+                    angleDev = (Math.random() - 0.5) * 70 * (1 - healthFactor);
+                    console.log(`🤕 ${kullaniciAdi} yaralı (Sağlık: %${profile.health})! Sapma: ${angleDev.toFixed(1)} derece.`);
+                }
+
                 const yon = Math.random() > 0.5 ? 1 : -1;
                 const minAci = AYARLAR.fizik.minimumAci;
                 const maxAci = AYARLAR.fizik.maksimumAci;
                 const rastgeleTemelAci = (Math.random() * (maxAci - minAci)) + minAci;
-                const rastgeleAci = rastgeleTemelAci * yon;
+                const rastgeleAci = (rastgeleTemelAci + angleDev) * yon;
                 const baslangicHiz = (AYARLAR.fizik.temelHiz + Math.random() * AYARLAR.fizik.hizVaryasyon) * ortalamaOran;
                 const yerCekimi = AYARLAR.fizik.yerCekimi * ortalamaOran;
                 const minIvme = AYARLAR.fizik.minimumIvme || 0.01;
@@ -826,28 +1381,8 @@
                                 const skorMesaji = `Tebrikler @${kullaniciAdi}! Havuzu ${puan.toFixed(0)} puanla tutturdun!${zorlukBilgisi}`;
                                 sendChatMessageToKick(skorMesaji);
 
-                                sonSkorlar.unshift({ username: kullaniciAdi, score: puan });
-                                if (sonSkorlar.length > 10) {
-                                    sonSkorlar.pop();
-                                }
-
-                                const mevcutEnIyi = enIyiSkorlarMap.get(kullaniciAdi) || 0;
-                                if (puan > mevcutEnIyi) {
-                                    enIyiSkorlarMap.set(kullaniciAdi, puan);
-                                    console.log(`🎉 YENİ KİŞİSEL REKOR! ${kullaniciAdi}: ${puan} puan`);
-                                }
-
-                                let genelEnIyiSkor = 0;
-                                let genelEnIyiKullanici = '';
-                                for (const [user, score] of enIyiSkorlarMap.entries()) {
-                                    if (score > genelEnIyiSkor) {
-                                        genelEnIyiSkor = score;
-                                        genelEnIyiKullanici = user;
-                                    }
-                                }
-                                if (genelEnIyiKullanici) {
-                                    skorGosterici.textContent = `En Yüksek Skor: ${genelEnIyiKullanici} - ${genelEnIyiSkor.toFixed(0)}/100`;
-                                }
+                                PairaWALInstance.append({ type: "SCORE", user: kullaniciAdi, score: puan });
+                                PairaWALInstance.append({ type: "RPG_POINT_CHANGE", user: kullaniciAdi, amount: puan, reason: "jump" });
 
                             } else {
                                 console.log(`💥 HAVUZ KAÇIRILDI! ${kullaniciAdi} - Mesafe: ${mesafe.toFixed(1)}`);
@@ -903,21 +1438,58 @@
                 return { carpisma: false };
             }
 
+            let messageQueue = [];
+            let isSendingMessage = false;
+            let throttleDelay = 300;
+
             async function sendChatMessageToKick(mesaj) {
                 if (!mesaj) return;
-
-                // AWS Serverless API ile güvenli mesaj gönderimi
-                if (!broadcasterSecret || !broadcasterUserId || !paramUserId) {
-                    console.warn('⚠️ Chat API yapılandırması eksik (secret, broadcaster_user_id veya id). Mesaj gönderilemedi:', mesaj);
+                
+                if (messageQueue.length >= 10) {
+                    console.warn("⚠️ Mesaj kuyruğu dolu (max 10), yeni mesaj atıldı:", mesaj);
                     return;
+                }
+                
+                messageQueue.push(mesaj);
+                processMessageQueue();
+            }
+
+            async function processMessageQueue() {
+                if (isSendingMessage || messageQueue.length === 0) return;
+                isSendingMessage = true;
+
+                const mesaj = messageQueue.shift();
+                
+                if (messageQueue.length >= 5) {
+                    throttleDelay = 1000;
+                } else if (messageQueue.length >= 2) {
+                    throttleDelay = 500;
+                } else {
+                    throttleDelay = 300;
+                }
+
+                try {
+                    await executeSendChatMessage(mesaj);
+                } catch (e) {
+                    console.error("Failed to send message:", e);
+                }
+
+                setTimeout(() => {
+                    isSendingMessage = false;
+                    processMessageQueue();
+                }, throttleDelay);
+            }
+
+            async function fetchAccessToken(forceRefresh = false) {
+                if (!broadcasterSecret || !broadcasterUserId || !paramUserId) {
+                    console.warn('⚠️ Token Broker yapılandırması eksik (secret, broadcaster_user_id veya id).');
+                    return null;
                 }
 
                 try {
                     const timestamp = Math.floor(Date.now() / 1000).toString();
-
-                    // HMAC-SHA256 imza hesapla: secret hiçbir zaman ağ üzerinden gönderilmez!
-                    // Payload: "userId:timestamp:broadcaster_user_id:message"
-                    const payload = `${paramUserId}:${timestamp}:${broadcasterUserId}:${mesaj}`;
+                    // İmza = HMAC-SHA256(secret, "userId:timestamp:broadcaster_user_id:force_refresh")
+                    const payload = `${paramUserId}:${timestamp}:${broadcasterUserId}:${forceRefresh ? 'true' : 'false'}`;
                     const encoder = new TextEncoder();
                     const keyData = encoder.encode(broadcasterSecret);
                     const msgData = encoder.encode(payload);
@@ -939,18 +1511,73 @@
                         },
                         body: JSON.stringify({
                             broadcaster_user_id: broadcasterUserId,
-                            message: mesaj
+                            force_refresh: forceRefresh
                         })
                     });
 
                     if (response.ok) {
-                        console.log(`📤 Mesaj AWS API üzerinden gönderildi: ${mesaj}`);
+                        const data = await response.json();
+                        if (data && data.access_token) {
+                            currentAccessToken = data.access_token;
+                            console.log('✅ Yeni access_token başarıyla alındı.');
+                            return currentAccessToken;
+                        }
+                    }
+                    console.error('❌ Token dağıtıcıdan token alınamadı. HTTP', response.status);
+                    return null;
+                } catch (error) {
+                    console.error('❌ Token alınırken hata oluştu:', error);
+                    return null;
+                }
+            }
+
+            async function executeSendChatMessage(mesaj, isRetry = false) {
+                if (!broadcasterSecret || !broadcasterUserId || !paramUserId) {
+                    console.warn('⚠️ Chat API yapılandırması eksik (secret, broadcaster_user_id veya id). Mesaj gönderilemedi:', mesaj);
+                    return;
+                }
+
+                if (!currentAccessToken) {
+                    const token = await fetchAccessToken(false);
+                    if (!token) {
+                        console.error('⚠️ Token alınamadığı için mesaj gönderilemiyor:', mesaj);
+                        return;
+                    }
+                }
+
+                try {
+                    const chatPayload = {
+                        broadcaster_user_id: parseInt(broadcasterUserId),
+                        content: mesaj.substring(0, 500),
+                        type: "bot"
+                    };
+
+                    const response = await fetch('https://api.kick.com/public/v1/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${currentAccessToken}`,
+                            'Content-Type': 'application/json',
+                            'Accept': '*/*'
+                        },
+                        body: JSON.stringify(chatPayload)
+                    });
+
+                    if (response.ok) {
+                        console.log(`📤 Mesaj doğrudan Kick API üzerinden gönderildi: ${mesaj}`);
+                    } else if (response.status === 401 && !isRetry) {
+                        console.warn('⚠️ Token geçersiz/süresi dolmuş (401). Yenilenip tekrar deneniyor...');
+                        const token = await fetchAccessToken(true);
+                        if (token) {
+                            await executeSendChatMessage(mesaj, true);
+                        } else {
+                            console.error('❌ Token yenilenemedi, mesaj gönderilemedi.');
+                        }
                     } else {
-                        const err = await response.json();
-                        console.error(`❌ Chat API hatası (${response.status}):`, err.error || err);
+                        const errText = await response.text();
+                        console.error(`❌ Kick Chat API Hatası (HTTP ${response.status}):`, errText);
                     }
                 } catch (error) {
-                    console.error('❌ Chat mesajı gönderilirken hata:', error);
+                    console.error('❌ Chat mesajı doğrudan gönderilirken ağ hatası:', error);
                 }
             }
 
@@ -971,18 +1598,54 @@
             // Python proxy kaldırıldı. Mesaj gönderimi artık doğrudan AWS API üzerinden yapılıyor.
             // connectToProxyServer fonksiyonu artık gerekli değil.
 
+            let watchdogTimer = null;
+            let reconnectDelay = 1000;
+            let activeWS = null;
+
+            function resetWatchdog(ws, chatroomId) {
+                if (watchdogTimer) clearTimeout(watchdogTimer);
+                watchdogTimer = setTimeout(() => {
+                    console.warn("⚠️ Kick WebSocket inaktivite zaman aşımı (45s). Yeniden bağlanılıyor...");
+                    ws.close();
+                }, 45000);
+            }
+
             function connectToKickChat(chatroomId) {
+                if (activeWS) {
+                    try {
+                        activeWS.onopen = null;
+                        activeWS.onmessage = null;
+                        activeWS.onclose = null;
+                        activeWS.onerror = null;
+                        activeWS.close();
+                    } catch (e) {
+                        console.error("Error closing existing WS:", e);
+                    }
+                }
+
                 console.log(`Kick sohbet sunucusuna bağlanılıyor: ${AYARLAR.kickWebSocketUrl}`);
-                const ws = new WebSocket(AYARLAR.kickWebSocketUrl);
+                let ws;
+                try {
+                    ws = new WebSocket(AYARLAR.kickWebSocketUrl);
+                    activeWS = ws;
+                } catch (e) {
+                    console.error("Failed to construct WebSocket:", e);
+                    setTimeout(() => connectToKickChat(chatroomId), reconnectDelay);
+                    reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+                    return;
+                }
 
                 ws.onopen = () => {
                     console.log("Kick sohbet sunucusuna başarıyla bağlanıldı!");
                     const subscribeMessage = { event: "pusher:subscribe", data: { channel: `chatrooms.${chatroomId}.v2`, auth: "" } };
                     ws.send(JSON.stringify(subscribeMessage));
                     console.log(`'${chatroomId}' ID'li odaya abonelik isteği gönderildi.`);
+                    reconnectDelay = 1000;
+                    resetWatchdog(ws, chatroomId);
                 };
 
                 ws.onmessage = (event) => {
+                    resetWatchdog(ws, chatroomId);
                     try {
                         const eventData = JSON.parse(event.data);
 
@@ -1000,12 +1663,10 @@
                             const cleanContent = content.toLowerCase();
 
                             // --- MODERATÖRLERİN OTOMATİK YETKİ ALMASI ---
-                            // Kick chat mesajındaki sender bilgisinden moderatör/yayıncı kontrolü
                             const sender = chatMessage.sender || {};
                             const senderIdentity = sender.identity || {};
                             const senderBadges = senderIdentity.badges || [];
 
-                            // Moderatör veya yayıncı olup olmadığını kontrol et
                             const isModerator = (
                                 sender.is_moderator === true ||
                                 sender.is_broadcaster === true ||
@@ -1017,17 +1678,88 @@
                                 })
                             );
 
-                            // Moderatörü otomatik olarak yetkili listesine ekle
                             if (isModerator && !AYARLAR.yetkiliListesi.includes(normalizedUsername)) {
                                 AYARLAR.yetkiliListesi.push(normalizedUsername);
                                 console.log(`🛡️ MOD OTOMATİK YETKİ: ${username} moderatör olarak algılandı ve yetkili listesine eklendi!`);
-                                console.log(`🔒 Güncel yetkili listesi: ${AYARLAR.yetkiliListesi.join(', ')}`);
                             }
-                            // --- MODERATÖRLERİN OTOMATİK YETKİ ALMASI BİTTİ ---
 
                             const isYetkili = AYARLAR.yetkiliListesi.includes(normalizedUsername);
 
+                            // --- KRİZ MODU (UNDER ATTACK) KORUMASI ---
+                            if (underAttackMode && !isYetkili) {
+                                if (isAllCaps(content)) {
+                                    sendChatMessageToKick(`/timeout ${username} 300`);
+                                    sendChatMessageToKick(`🛡️ @${username}, kriz modunda büyük harf kullandığın için 5 dakika susturuldun.`);
+                                    return;
+                                }
+                                const isGameCmd = cleanContent.startsWith('!atla') || 
+                                                  cleanContent.startsWith('!profil') || 
+                                                  cleanContent.startsWith('!puan') || 
+                                                  cleanContent.startsWith('!market') || 
+                                                  cleanContent.startsWith('!hediye') || 
+                                                  cleanContent.startsWith('!evlen') || 
+                                                  cleanContent.startsWith('!nişan') || 
+                                                  cleanContent.startsWith('!bosan') || 
+                                                  cleanContent.startsWith('!sev') || 
+                                                  cleanContent.startsWith('!öp') || 
+                                                  cleanContent.startsWith('!döv') || 
+                                                  cleanContent.startsWith('!dayak');
+                                if (isGameCmd) {
+                                    console.log(`🚫 Under Attack: ${username}'in '${cleanContent}' komutu engellendi.`);
+                                    return;
+                                }
+                            }
+
+                            // --- GAME ACTIVE CHECKS ---
+                            if (wordGameActive && !cleanContent.startsWith('!')) {
+                                const word = cleanContent.trim();
+                                if (/^[a-zA-ZğüşıöçĞÜŞİÖÇ]+$/.test(word) && word.length >= 3) {
+                                    if (word.includes(wordGamePattern.toLowerCase())) {
+                                        if (!usedWords.has(word)) {
+                                            const isValid = (turkishWordsSet.size === 0) || turkishWordsSet.has(word);
+                                            if (isValid) {
+                                                usedWords.add(word);
+                                                const timerEl = document.getElementById('widget-timer');
+                                                const remTime = timerEl ? (parseInt(timerEl.textContent) || 10) : 10;
+                                                wordGameWinners.push({ user: username, word: word, score: remTime });
+                                                updateWidgetFooter(`Son: ${word} (@${username})`);
+                                                console.log(`✅ Kelime: ${word} from ${username} (+${remTime} pts)`);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (triviaActive && !cleanContent.startsWith('!')) {
+                                const ans = cleanContent.trim();
+                                if (ans === triviaAnswer) {
+                                    if (!triviaWinners.includes(username)) {
+                                        triviaWinners.push(username);
+                                        updateWidgetFooter(`${triviaWinners.length} kişi doğru bildi!`);
+                                        console.log(`🎯 Trivia doğru: ${username}`);
+                                    }
+                                }
+                            }
+
+                            // --- MODERATOR COMMANDS ---
                             if (isYetkili) {
+                                if (cleanContent === '!underattack') {
+                                    const nextState = !underAttackMode;
+                                    PairaWALInstance.append({ type: "UNDER_ATTACK", active: nextState });
+                                    sendChatMessageToKick(`⚠️ KRİZ MODU (Under Attack) ${nextState ? 'AKTİF EDİLDİ! Oyun komutları devredışı, spam engelleme devrede.' : 'KAPATILDI! Normale dönüldü.'}`);
+                                    return;
+                                }
+
+                                if (cleanContent === '!trivia') {
+                                    startTriviaGame();
+                                    return;
+                                }
+
+                                if (cleanContent === '!kelimeoyunu') {
+                                    startWordGame();
+                                    return;
+                                }
+
                                 if (cleanContent === '!topluatla') {
                                     topluAtlamaAktif = true;
                                     atlamaSirasi = [];
@@ -1051,7 +1783,6 @@
                                     return;
                                 }
 
-                                // !topluiptal komutu - toplu atlamayı iptal et
                                 if (cleanContent === '!topluiptal') {
                                     if (topluAtlamaAktif) {
                                         const iptalEdilen = atlamaSirasi.length;
@@ -1064,9 +1795,22 @@
                                     }
                                     return;
                                 }
+
+                                if (cleanContent.startsWith('!ban ')) {
+                                    const cmdParts = content.split(/\s+/).filter(p => p.length > 0);
+                                    const targetMention = cmdParts[1] || '';
+                                    const targetName = targetMention.replace('@', '').trim();
+                                    if (targetName) {
+                                        sendChatMessageToKick(`/ban ${targetName}`);
+                                        sendChatMessageToKick(`🛡️ @${targetName} kanaldan banlandı!`);
+                                    }
+                                    return;
+                                }
                             }
 
+                            // --- USER COMMANDS WITH COOLDOWN ---
                             if (cleanContent === '!eniyi') {
+                                if (!checkCommandCooldown(username, "!eniyi")) return;
                                 const sortedScores = Array.from(enIyiSkorlarMap.entries())
                                     .sort((a, b) => b[1] - a[1])
                                     .slice(0, 5);
@@ -1082,8 +1826,10 @@
                                 }
                                 sendChatMessageToKick(chatMesaji);
                                 return;
+                            }
 
-                            } else if (cleanContent === '!son') {
+                            if (cleanContent === '!son') {
+                                if (!checkCommandCooldown(username, "!son")) return;
                                 let chatMesaji = "⏱️ Son Başarılı Atlayışlar: ";
                                 if (sonSkorlar.length === 0) {
                                     chatMesaji = "Henüz başarılı bir atlayış olmadı.";
@@ -1097,6 +1843,232 @@
                                 return;
                             }
 
+                            if (cleanContent === '!sira') {
+                                if (!checkCommandCooldown(username, "!sira")) return;
+                                if (topluAtlamaAktif) {
+                                    const siraListesi = atlamaSirasi.map(k => k.username).join(', ');
+                                    sendChatMessageToKick(`📋 Sırada ${atlamaSirasi.length} kişi var: ${siraListesi || 'Henüz kimse yok'}`);
+                                } else {
+                                    sendChatMessageToKick(`⚠️ Toplu atlama modu şu an aktif değil.`);
+                                }
+                                return;
+                            }
+                            
+                            if (cleanContent === '!katıl') {
+                                PairaWALInstance.append({ type: "RAFFLE_JOIN", user: username });
+                                console.log(`🎟️ ${username} çekilişe katıldı.`);
+                                return;
+                            }
+
+                            // --- RPG COMMANDS ---
+                            if (cleanContent === '!profil' || cleanContent === '!puan') {
+                                if (!checkCommandCooldown(username, "!profil")) return;
+                                const profile = getOrCreateProfile(username);
+                                const partner = getMarriedPartner(username) || getEngagedPartner(username);
+                                const partnerText = partner ? ` | 💍 Eş/Nişanlı: @${partner}` : '';
+                                const invText = profile.envanter.length > 0 ? profile.envanter.join(', ') : 'Boş';
+                                sendChatMessageToKick(`👤 @${username} | Seviye: ${profile.seviye} | Puan: ${profile.puan} | Sağlık: %${profile.health}${partnerText} | Envanter: [${invText}]`);
+                                return;
+                            }
+
+                            if (cleanContent === '!market' || cleanContent.startsWith('!market ')) {
+                                const items = {
+                                    "1": { name: "Yüzük", price: 1000 },
+                                    "2": { name: "Çiçek", price: 200 },
+                                    "3": { name: "Madalya", price: 500 },
+                                    "4": { name: "Kalp", price: 300 },
+                                    "5": { name: "Yıldız", price: 400 }
+                                };
+                                
+                                const cmdParts = content.split(/\s+/).filter(p => p.length > 0);
+                                if (cmdParts.length === 1) {
+                                    if (!checkCommandCooldown(username, "!market")) return;
+                                    const catalog = Object.entries(items).map(([id, item]) => `${id}. ${item.name} (${item.price} Puan)`).join(' | ');
+                                    sendChatMessageToKick(`🛒 Market: ${catalog} (Satın almak için: !market [id])`);
+                                    return;
+                                }
+                                
+                                const itemParam = cmdParts[1].trim();
+                                const itemSelected = items[itemParam] || Object.values(items).find(i => i.name.toLowerCase() === itemParam.toLowerCase());
+                                if (!itemSelected) {
+                                    sendChatMessageToKick(`⚠️ @${username}, geçersiz ürün ID veya adı!`);
+                                    return;
+                                }
+                                
+                                const profile = getOrCreateProfile(username);
+                                if (profile.puan < itemSelected.price) {
+                                    sendChatMessageToKick(`⚠️ @${username}, yeterli puanın yok! Gerekli: ${itemSelected.price} | Mevcut: ${profile.puan}`);
+                                    return;
+                                }
+                                
+                                PairaWALInstance.append({ type: "RPG_POINT_CHANGE", user: username, amount: -itemSelected.price, reason: "market_buy" });
+                                PairaWALInstance.append({ type: "RPG_INVENTORY", user: username, item: itemSelected.name, action: "ADD" });
+                                sendChatMessageToKick(`🛒 @${username}, '${itemSelected.name}' satın aldı! Yeni bakiye: ${profile.puan - itemSelected.price} puan.`);
+                                return;
+                            }
+
+                            if (cleanContent.startsWith('!hediye ')) {
+                                if (!checkCommandCooldown(username, "!hediye")) return;
+                                const cmdParts = content.split(/\s+/).filter(p => p.length > 0);
+                                if (cmdParts.length < 3) {
+                                    sendChatMessageToKick(`⚠️ Kullanım: !hediye [eşya_adı] @kullanıcı`);
+                                    return;
+                                }
+                                const itemName = cmdParts[1].trim();
+                                const targetMention = cmdParts[2].trim();
+                                const targetName = targetMention.replace('@', '');
+                                
+                                const profile = getOrCreateProfile(username);
+                                const itemIdx = profile.envanter.findIndex(i => i.toLowerCase() === itemName.toLowerCase());
+                                if (itemIdx === -1) {
+                                    sendChatMessageToKick(`⚠️ @${username}, envanterinde '${itemName}' bulunamadı.`);
+                                    return;
+                                }
+                                const actualItemName = profile.envanter[itemIdx];
+                                
+                                PairaWALInstance.append({ type: "RPG_INVENTORY", user: username, item: actualItemName, action: "REMOVE" });
+                                PairaWALInstance.append({ type: "RPG_INVENTORY", user: targetName, item: actualItemName, action: "ADD" });
+                                sendChatMessageToKick(`🎁 @${username}, @${targetName} kullanıcısına '${actualItemName}' hediye etti!`);
+                                return;
+                            }
+
+                            if (cleanContent.startsWith('!evlen ')) {
+                                if (!checkCommandCooldown(username, "!evlen")) return;
+                                const cmdParts = content.split(/\s+/).filter(p => p.length > 0);
+                                const targetMention = cmdParts[1] || '';
+                                const targetName = targetMention.replace('@', '').trim();
+                                if (!targetName || targetName.toLowerCase() === normalizedUsername) {
+                                    sendChatMessageToKick(`⚠️ Geçersiz eş seçimi.`);
+                                    return;
+                                }
+                                
+                                if (getMarriedPartner(username)) {
+                                    sendChatMessageToKick(`⚠️ @${username}, zaten evlisin!`);
+                                    return;
+                                }
+                                if (getMarriedPartner(targetName)) {
+                                    sendChatMessageToKick(`⚠️ @${targetName} zaten evli!`);
+                                    return;
+                                }
+                                
+                                pendingMarriageProposals.set(targetName.toLowerCase(), {
+                                    sender: username,
+                                    ts: Date.now()
+                                });
+                                sendChatMessageToKick(`❤️ @${username}, @${targetName} kullanıcısına evlilik teklif etti! Kabul etmek için 60 saniye içinde '!evet' yazın.`);
+                                return;
+                            }
+
+                            if (cleanContent.startsWith('!nişan ')) {
+                                if (!checkCommandCooldown(username, "!nisan")) return;
+                                const cmdParts = content.split(/\s+/).filter(p => p.length > 0);
+                                const targetMention = cmdParts[1] || '';
+                                const targetName = targetMention.replace('@', '').trim();
+                                if (!targetName || targetName.toLowerCase() === normalizedUsername) {
+                                    sendChatMessageToKick(`⚠️ Geçersiz seçim.`);
+                                    return;
+                                }
+                                
+                                if (getMarriedPartner(username) || getEngagedPartner(username)) {
+                                    sendChatMessageToKick(`⚠️ @${username}, zaten evli veya nişanlısın!`);
+                                    return;
+                                }
+                                if (getMarriedPartner(targetName) || getEngagedPartner(targetName)) {
+                                    sendChatMessageToKick(`⚠️ @${targetName} zaten evli veya nişanlı!`);
+                                    return;
+                                }
+                                
+                                pendingEngagementProposals.set(targetName.toLowerCase(), {
+                                    sender: username,
+                                    ts: Date.now()
+                                });
+                                sendChatMessageToKick(`💍 @${username}, @${targetName} kullanıcısına nişan teklif etti! Kabul etmek için 60 saniye içinde '!evet' yazın.`);
+                                return;
+                            }
+
+                            if (cleanContent === '!evet') {
+                                if (!checkCommandCooldown(username, "!evet")) return;
+                                const now = Date.now();
+                                
+                                const mProp = pendingMarriageProposals.get(normalizedUsername);
+                                if (mProp && (now - mProp.ts < 60000)) {
+                                    pendingMarriageProposals.delete(normalizedUsername);
+                                    PairaWALInstance.append({ type: "RPG_RELATION", user1: mProp.sender, user2: username, status: "MARRIED" });
+                                    sendChatMessageToKick(`🎉 Tebrikler! @${mProp.sender} ve @${username} artık evli! ❤️💍`);
+                                    return;
+                                }
+                                
+                                const eProp = pendingEngagementProposals.get(normalizedUsername);
+                                if (eProp && (now - eProp.ts < 60000)) {
+                                    pendingEngagementProposals.delete(normalizedUsername);
+                                    PairaWALInstance.append({ type: "RPG_RELATION", user1: eProp.sender, user2: username, status: "ENGAGED" });
+                                    sendChatMessageToKick(`💍 Tebrikler! @${eProp.sender} ve @${username} artık nişanlı! 🎉`);
+                                    return;
+                                }
+                                
+                                sendChatMessageToKick(`⚠️ @${username}, adına bekleyen aktif bir teklif bulunamadı.`);
+                                return;
+                            }
+
+                            if (cleanContent === '!bosan') {
+                                if (!checkCommandCooldown(username, "!bosan")) return;
+                                const partner = getMarriedPartner(username) || getEngagedPartner(username);
+                                if (!partner) {
+                                    sendChatMessageToKick(`⚠️ @${username}, zaten evli veya nişanlı değilsin!`);
+                                    return;
+                                }
+                                
+                                const profile1 = getOrCreateProfile(username);
+                                const profile2 = getOrCreateProfile(partner);
+                                const tax1 = Math.round(profile1.puan * 0.10);
+                                const tax2 = Math.round(profile2.puan * 0.10);
+                                
+                                PairaWALInstance.append({ type: "RPG_POINT_CHANGE", user: username, amount: -tax1, reason: "divorce_tax" });
+                                PairaWALInstance.append({ type: "RPG_POINT_CHANGE", user: partner, amount: -tax2, reason: "divorce_tax" });
+                                PairaWALInstance.append({ type: "RPG_RELATION", user1: username, user2: partner, status: "NONE" });
+                                
+                                sendChatMessageToKick(`💔 @${username} ve @${partner} boşandı. Boşanma vergisi olarak her iki taraftan da %10 puan silindi (Senden: ${tax1}, Ondan: ${tax2}).`);
+                                return;
+                            }
+
+                            if (cleanContent.startsWith('!sev ') || cleanContent.startsWith('!öp ')) {
+                                const cmdParts = content.split(/\s+/).filter(p => p.length > 0);
+                                const targetMention = cmdParts[1] || '';
+                                const targetName = targetMention.replace('@', '').trim();
+                                if (!targetName || targetName.toLowerCase() === normalizedUsername) return;
+                                
+                                if (!checkCommandCooldown(username, "!sev")) return;
+                                
+                                PairaWALInstance.append({ type: "RPG_SOCIAL", user1: username, user2: targetName, affinity: 1, hostility: 0 });
+                                sendChatMessageToKick(`❤️ @${username}, @${targetName} kullanıcısını sevdi! Yakınlık puanı arttı.`);
+                                return;
+                            }
+
+                            if (cleanContent.startsWith('!döv ') || cleanContent.startsWith('!dayak ')) {
+                                const cmdParts = content.split(/\s+/).filter(p => p.length > 0);
+                                const targetMention = cmdParts[1] || '';
+                                const targetName = targetMention.replace('@', '').trim();
+                                if (!targetName || targetName.toLowerCase() === normalizedUsername) return;
+                                
+                                if (!checkCommandCooldown(username, "!döv")) return;
+                                
+                                const targetProfile = getOrCreateProfile(targetName);
+                                const nextHealth = targetProfile.health - 10;
+                                
+                                PairaWALInstance.append({ type: "RPG_SOCIAL", user1: username, user2: targetName, affinity: 0, hostility: 1 });
+                                
+                                if (nextHealth <= 0) {
+                                    PairaWALInstance.append({ type: "RPG_HEALTH", user: targetName, health: 100 });
+                                    PairaWALInstance.append({ type: "RPG_POINT_CHANGE", user: targetName, amount: -50, reason: "hospital_bill" });
+                                    sendChatMessageToKick(`👊 @${username}, @${targetName} kullanıcısını hastanelik etti! @${targetName} tedavi masrafı olarak 50 puan kaybetti. 🚑`);
+                                } else {
+                                    PairaWALInstance.append({ type: "RPG_HEALTH", user: targetName, health: nextHealth });
+                                    sendChatMessageToKick(`👊 @${username}, @${targetName} kullanıcısını patakladı! @${targetName} sağlığı: %${nextHealth} (atlama şansı düştü)`);
+                                }
+                                return;
+                            }
+
+                            // --- ATLAMA COMMANDS ---
                             if (cleanContent === '!atla' || cleanContent.startsWith('!atla ')) {
                                 let emojiId = null;
                                 const emoteRegex = /\[emote:(\d+):.*?\]/;
@@ -1104,7 +2076,6 @@
                                 if (match && match[1]) { emojiId = match[1]; }
 
                                 if (topluAtlamaAktif) {
-                                    // Aynı kullanıcının birden fazla kez sıraya girmesini engelle
                                     const zadenSirada = atlamaSirasi.some(k => k.username.toLowerCase() === normalizedUsername);
                                     if (zadenSirada) {
                                         console.log(`⚠️ ${username} zaten sırada, tekrar eklenmedi.`);
@@ -1117,12 +2088,6 @@
                                     atlaAnimasyonunuBaslat(username, emojiId);
                                 }
                             }
-
-                            // !sira komutu - kaç kişi sırada olduğunu göster
-                            if (cleanContent === '!sira' && topluAtlamaAktif) {
-                                const siraListesi = atlamaSirasi.map(k => k.username).join(', ');
-                                sendChatMessageToKick(`📋 Sırada ${atlamaSirasi.length} kişi var: ${siraListesi || 'Henüz kimse yok'}`);
-                            }
                         }
                     } catch (error) {
                         console.error("Sohbet mesajı işlenirken hata:", error, event.data);
@@ -1130,14 +2095,147 @@
                 };
 
                 ws.onclose = () => {
-                    console.log("Kick sohbet bağlantısı kesildi. 3 saniye sonra tekrar denenecek.");
-                    setTimeout(() => connectToKickChat(chatroomId), 3000);
+                    if (watchdogTimer) clearTimeout(watchdogTimer);
+                    console.log(`Kick sohbet bağlantısı kesildi. ${reconnectDelay / 1000} saniye sonra tekrar denenecek.`);
+                    setTimeout(() => connectToKickChat(chatroomId), reconnectDelay);
+                    reconnectDelay = Math.min(reconnectDelay * 2, 30000);
                 };
 
                 ws.onerror = (error) => {
                     console.error("Kick WebSocket hatası:", error);
                     ws.close();
                 };
+            }
+
+            // --- TRIVIA & WORD GAME MOTORU ---
+            async function startTriviaGame() {
+                if (triviaActive || wordGameActive) {
+                    sendChatMessageToKick("⚠️ Zaten aktif bir oyun devam ediyor.");
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('trivia.json');
+                    if (!response.ok) throw new Error();
+                    const questions = await response.json();
+                    if (!Array.isArray(questions) || questions.length === 0) throw new Error();
+                    
+                    const q = questions[Math.floor(Math.random() * questions.length)];
+                    triviaActive = true;
+                    triviaQuestion = q;
+                    triviaAnswer = q.cevap.trim().toLowerCase();
+                    triviaWinners = [];
+                    
+                    let timeLeft = 30;
+                    showWidget(
+                        "🧠 TRIVIA OYUNU",
+                        `<div style="font-size:14px;font-weight:bold;margin-bottom:8px;">${q.soru}</div>
+                         <div style="font-size:11px;opacity:0.8;">Kategori: ${q.kategori} | Zorluk: ${q.zorluk}</div>`,
+                        timeLeft,
+                        "Doğru cevabı chat'e yazın! (Sessiz)"
+                    );
+                    
+                    sendChatMessageToKick(`🧠 TRIVIA BAŞLADI! Soru: ${q.soru} | Kategori: ${q.kategori} | Süre: 30sn.`);
+                    
+                    triviaTimer = setInterval(() => {
+                        timeLeft--;
+                        updateWidgetTimer(timeLeft);
+                        
+                        if (timeLeft <= 0) {
+                            clearInterval(triviaTimer);
+                            endTriviaGame();
+                        }
+                    }, 1000);
+                } catch (e) {
+                    sendChatMessageToKick("⚠️ trivia.json dosyası bulunamadı veya boş! Lütfen soru listesini ekleyin.");
+                }
+            }
+
+            function endTriviaGame() {
+                triviaActive = false;
+                hideWidget();
+                
+                if (triviaWinners.length === 0) {
+                    sendChatMessageToKick(`⏱️ Süre doldu! Kimse doğru cevabı veremedi. Doğru cevap: ${triviaQuestion.cevap}`);
+                    return;
+                }
+                
+                const rewardMap = [100, 50, 25];
+                const winnersList = [];
+                
+                triviaWinners.slice(0, 3).forEach((winner, idx) => {
+                    const pts = rewardMap[idx];
+                    PairaWALInstance.append({ type: "RPG_POINT_CHANGE", user: winner, amount: pts, reason: "trivia_win" });
+                    winnersList.push(`@${winner} (+${pts} Puan)`);
+                });
+                
+                sendChatMessageToKick(`⏱️ Süre doldu! Doğru cevap: ${triviaQuestion.cevap} | Kazananlar: ${winnersList.join(' | ')}`);
+            }
+
+            async function startWordGame() {
+                if (triviaActive || wordGameActive) {
+                    sendChatMessageToKick("⚠️ Zaten aktif bir oyun devam ediyor.");
+                    return;
+                }
+                
+                const patterns = ["al", "ka", "te", "ma", "ar", "in", "or", "et", "li", "an", "de", "ko", "ba", "ya"];
+                const pattern = patterns[Math.floor(Math.random() * patterns.length)].toUpperCase();
+                
+                wordGameActive = true;
+                wordGamePattern = pattern;
+                wordGameWinners = [];
+                usedWords.clear();
+                
+                let timeLeft = 20;
+                showWidget(
+                    "📝 KELİME OYUNU",
+                    `<div style="font-size:13px;margin-bottom:4px;">İçinde şu harfler geçen kelimeler yazın:</div>
+                     <div class="widget-word-pattern">${pattern}</div>`,
+                    timeLeft,
+                    "Her kelime kalan süre kadar puan kazandırır!"
+                );
+                
+                sendChatMessageToKick(`📝 KELİME OYUNU BAŞLADI! İçinde '${pattern}' geçen Türkçe kelimeler yazın! Süre: 20sn.`);
+                
+                wordGameTimer = setInterval(() => {
+                    timeLeft--;
+                    updateWidgetTimer(timeLeft);
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(wordGameTimer);
+                        endWordGame();
+                    }
+                }, 1000);
+            }
+
+            function endWordGame() {
+                wordGameActive = false;
+                hideWidget();
+                
+                if (wordGameWinners.length === 0) {
+                    sendChatMessageToKick(`⏱️ Süre doldu! Kimse geçerli bir kelime yazamadı.`);
+                    return;
+                }
+                
+                const userScores = new Map();
+                for (const win of wordGameWinners) {
+                    const lowerUser = win.user.toLowerCase();
+                    const existing = userScores.get(lowerUser) || { originalName: win.user, score: 0 };
+                    existing.score += win.score;
+                    userScores.set(lowerUser, existing);
+                }
+                
+                const sortedWinners = Array.from(userScores.values())
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 3);
+                
+                const summaryList = [];
+                for (const entry of sortedWinners) {
+                    PairaWALInstance.append({ type: "RPG_POINT_CHANGE", user: entry.originalName, amount: entry.score, reason: "word_game" });
+                    summaryList.push(`@${entry.originalName} (+${entry.score} Puan)`);
+                }
+                
+                sendChatMessageToKick(`⏱️ Kelime oyunu bitti! En çok puan toplayanlar: ${summaryList.join(' | ')}`);
             }
 
             function ekranBoyutlariniGuncelle() {
@@ -1191,7 +2289,7 @@
                             AYARLAR.kickChatroomID = chatroomId;
                             console.log(`✅ Kanal bulundu! Chatroom ID: ${chatroomId}`);
                             if (data.broadcaster_user_id) {
-                                console.log(`✅ Broadcaster User ID: ${data.broadcaster_user_id}`);
+                                console.log(`✅ Chatroom ID (buid): ${data.broadcaster_user_id}`);
                             }
                             skorGosterici.textContent = 'En Yüksek Skor: Henüz yok';
                         } else {
@@ -1204,11 +2302,10 @@
 
                 // Chat API hazır mı?
                 if (broadcasterSecret && broadcasterUserId && paramUserId) {
-                    chatApiReady = true;
                     console.log('✅ Chat API hazır. Mesajlar AWS üzerinden güvenli şekilde gönderilecek.');
                 } else {
                     console.warn('⚠️ Chat API yapılandırması eksik. Mesaj gönderilmeyecek.');
-                    console.warn('  Gerekli URL parametreleri: secret, broadcaster_user_id, id');
+                    console.warn('  Gerekli URL parametreleri: secret, broadcaster_user_id (Chatroom ID), id');
                 }
 
                 if (chatroomId && chatroomId != 0) {
@@ -1222,7 +2319,13 @@
                 }
             }
 
-            baslat();
+            PairaWALInstance.init().then(() => {
+                console.log("🚀 PairaWAL database & sync initialized successfully!");
+                baslat();
+            }).catch(e => {
+                console.error("❌ PairaWAL initialization failed, starting anyway:", e);
+                baslat();
+            });
 
         });
     </script>
