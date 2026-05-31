@@ -1,0 +1,62 @@
+[
+  {
+    "soru": "Türkiye'nin başkenti hangi şehirdir?",
+    "kategori": "Coğrafya",
+    "zorluk": "Kolay",
+    "cevap": "Ankara"
+  },
+  {
+    "soru": "Dünya'nın en yüksek dağı hangisidir?",
+    "kategori": "Coğrafya",
+    "zorluk": "Kolay",
+    "cevap": "Everest"
+  },
+  {
+    "soru": "İstanbul kaç yılında fethedilmiştir?",
+    "kategori": "Tarih",
+    "zorluk": "Kolay",
+    "cevap": "1453"
+  },
+  {
+    "soru": "İstiklal Marşı'mızın şairi kimdir?",
+    "kategori": "Edebiyat",
+    "zorluk": "Kolay",
+    "cevap": "Mehmet Akif Ersoy"
+  },
+  {
+    "soru": "Kendi etrafında dönen ilk yapay uydu hangisidir?",
+    "kategori": "Uzay",
+    "zorluk": "Orta",
+    "cevap": "Sputnik"
+  },
+  {
+    "soru": "Suyun kimyasal formülü nedir?",
+    "kategori": "Kimya",
+    "zorluk": "Kolay",
+    "cevap": "H2O"
+  },
+  {
+    "soru": "Telefonu icat eden bilim insanı kimdir?",
+    "kategori": "Tarih/Bilim",
+    "zorluk": "Kolay",
+    "cevap": "Graham Bell"
+  },
+  {
+    "soru": "Güneş sistemindeki en büyük gezegen hangisidir?",
+    "kategori": "Gökbilim",
+    "zorluk": "Kolay",
+    "cevap": "Jüpiter"
+  },
+  {
+    "soru": "Kızıl Gezegen olarak bilinen gezegen hangisidir?",
+    "kategori": "Gökbilim",
+    "zorluk": "Kolay",
+    "cevap": "Mars"
+  },
+  {
+    "soru": "Yerçekimi kanununu kim keşfetmiştir?",
+    "kategori": "Fizik",
+    "zorluk": "Kolay",
+    "cevap": "Isaac Newton"
+  }
+]

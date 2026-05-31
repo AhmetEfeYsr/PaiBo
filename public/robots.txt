@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /serverless/
+Disallow: /atla.html
+
+Sitemap: https://bot.pairaaa.com/sitemap.xml
