@@ -3583,7 +3583,7 @@
                 isButterflyActive = true;
                 
                 const container = document.createElement('div');
-                container.className = 'butterfly-container';
+                container.className = `butterfly-container butterfly-${chosen.type}`;
                 container.id = 'butterfly-active';
                 
                 const butterfly = document.createElement('div');
