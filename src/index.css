@@ -139,6 +139,31 @@ body::before {
   font-size: 20px;
 }
 
+.logo-section h1.no-icon::before {
+  display: none;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-img {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 2px solid rgba(168, 85, 247, 0.4);
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
+  object-fit: cover;
+  transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.logo-img:hover {
+  transform: rotate(360deg);
+}
+
+
 .logo-section p {
   font-size: 13px;
   color: var(--text-muted);

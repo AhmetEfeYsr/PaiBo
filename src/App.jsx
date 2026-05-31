@@ -752,10 +752,14 @@ function App() {
   return (
     <div>
       <header className="panel-header">
-        <div className="logo-section">
-          <h1>Paira Atla</h1>
-          <p>Yayıncı Kontrol Paneli & Chat Entegrasyonu</p>
+        <div className="logo-container">
+          <img src="/main_logo.avif" alt="Paira Games" className="logo-img" />
+          <div className="logo-section">
+            <h1 className="no-icon">Paira Atla</h1>
+            <p>Yayıncı Kontrol Paneli & Chat Entegrasyonu</p>
+          </div>
         </div>
+
         <nav className="nav-tabs">
           <button 
             className={`nav-tab ${activeTab === 'config' ? 'active' : ''}`}
