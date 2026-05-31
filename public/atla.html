@@ -428,7 +428,23 @@
                     'grup3': { resim: '3.png', kullanicilar: [] }
                 },
                 testModu: false,
-                fizik: { yerCekimi: 0.05, temelHiz: 3, hizVaryasyon: 1.5, minimumAci: 15, maksimumAci: 60, minimumIvme: 0.66, maksimumIvme: 1 },
+                fizik: {
+                    yerCekimi: (urlParams.get('gravity') !== null && !isNaN(parseFloat(urlParams.get('gravity')))) ? parseFloat(urlParams.get('gravity')) :
+                               (urlParams.get('yercekimi') !== null && !isNaN(parseFloat(urlParams.get('yercekimi')))) ? parseFloat(urlParams.get('yercekimi')) : 0.025,
+                    temelHiz: (urlParams.get('hiz') !== null && !isNaN(parseFloat(urlParams.get('hiz')))) ? parseFloat(urlParams.get('hiz')) :
+                              (urlParams.get('speed') !== null && !isNaN(parseFloat(urlParams.get('speed')))) ? parseFloat(urlParams.get('speed')) : 4,
+                    hizVaryasyon: (urlParams.get('hizvar') !== null && !isNaN(parseFloat(urlParams.get('hizvar')))) ? parseFloat(urlParams.get('hizvar')) :
+                                  (urlParams.get('speedvar') !== null && !isNaN(parseFloat(urlParams.get('speedvar')))) ? parseFloat(urlParams.get('speedvar')) : 1.5,
+                    minimumAci: (urlParams.get('minaci') !== null && !isNaN(parseFloat(urlParams.get('minaci')))) ? parseFloat(urlParams.get('minaci')) :
+                                (urlParams.get('minangle') !== null && !isNaN(parseFloat(urlParams.get('minangle')))) ? parseFloat(urlParams.get('minangle')) : 25,
+                    maksimumAci: (urlParams.get('maxaci') !== null && !isNaN(parseFloat(urlParams.get('maxaci')))) ? parseFloat(urlParams.get('maxaci')) :
+                                 (urlParams.get('maxangle') !== null && !isNaN(parseFloat(urlParams.get('maxangle')))) ? parseFloat(urlParams.get('maxangle')) : 55,
+                    minimumIvme: (urlParams.get('minivme') !== null && !isNaN(parseFloat(urlParams.get('minivme')))) ? parseFloat(urlParams.get('minivme')) :
+                                 (urlParams.get('minaccel') !== null && !isNaN(parseFloat(urlParams.get('minaccel')))) ? parseFloat(urlParams.get('minaccel')) : 0.01,
+                    maksimumIvme: (urlParams.get('maxivme') !== null && !isNaN(parseFloat(urlParams.get('maxivme')))) ? parseFloat(urlParams.get('maxivme')) :
+                                  (urlParams.get('maxaccel') !== null && !isNaN(parseFloat(urlParams.get('maxaccel')))) ? parseFloat(urlParams.get('maxaccel')) : 0.03
+                },
+
                 puanlama: {
                     // YENİ: Bu değerler target boyutuna göre dinamik olarak hesaplanacak
                     basariMesafeSiniri: 150,  // Varsayılan (300 / 2)

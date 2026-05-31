@@ -26,6 +26,13 @@ function App() {
   const [charSelect, setCharSelect] = useState(() => localStorage.getItem('paira_char') || 'karakter');
   const [targetSelect, setTargetSelect] = useState(() => localStorage.getItem('paira_target') || 'havuz');
   const [soundSelect, setSoundSelect] = useState(() => localStorage.getItem('paira_sound') || 'vada');
+  const [gravity, setGravity] = useState(() => localStorage.getItem('paira_gravity') || '0.025');
+  const [minAngle, setMinAngle] = useState(() => localStorage.getItem('paira_minangle') || '25');
+  const [maxAngle, setMaxAngle] = useState(() => localStorage.getItem('paira_maxangle') || '55');
+  const [minAccel, setMinAccel] = useState(() => localStorage.getItem('paira_minaccel') || '0.01');
+  const [maxAccel, setMaxAccel] = useState(() => localStorage.getItem('paira_maxaccel') || '0.03');
+  const [speed, setSpeed] = useState(() => localStorage.getItem('paira_speed') || '4');
+
   const [charNameOther, setCharNameOther] = useState('');
   const [targetNameOther, setTargetNameOther] = useState('');
   const [soundNameOther, setSoundNameOther] = useState('');
@@ -232,12 +239,19 @@ function App() {
     localStorage.setItem('paira_char', charSelect);
     localStorage.setItem('paira_target', targetSelect);
     localStorage.setItem('paira_sound', soundSelect);
+    localStorage.setItem('paira_gravity', gravity);
+    localStorage.setItem('paira_minangle', minAngle);
+    localStorage.setItem('paira_maxangle', maxAngle);
+    localStorage.setItem('paira_minaccel', minAccel);
+    localStorage.setItem('paira_maxaccel', maxAccel);
+    localStorage.setItem('paira_speed', speed);
     localStorage.setItem('paira_raffle_cost', raffleEntryCost.toString());
     localStorage.setItem('paira_raffle_level', raffleMinLevel.toString());
     localStorage.setItem('paira_raffle_history', JSON.stringify(raffleHistory));
     localStorage.setItem('paira_butterfly_min_time', butterflyMinTime.toString());
     localStorage.setItem('paira_butterfly_max_time', butterflyMaxTime.toString());
-  }, [devId, broadcasterSecret, channelName, broadcasterUserId, authList, poolWidth, charWidth, charSelect, targetSelect, soundSelect, raffleEntryCost, raffleMinLevel, raffleHistory, butterflyMinTime, butterflyMaxTime]);
+  }, [devId, broadcasterSecret, channelName, broadcasterUserId, authList, poolWidth, charWidth, charSelect, targetSelect, soundSelect, gravity, minAngle, maxAngle, minAccel, maxAccel, speed, raffleEntryCost, raffleMinLevel, raffleHistory, butterflyMinTime, butterflyMaxTime]);
+
 
   const handleRaffleJoinAttempt = async (user) => {
     const lowerUser = user.toLowerCase();
@@ -596,6 +610,12 @@ function App() {
     if (authList) params.set('auth', authList);
     if (poolWidth) params.set('poolwidth', poolWidth);
     if (charWidth) params.set('charwidth', charWidth);
+    if (gravity) params.set('gravity', gravity);
+    if (minAngle) params.set('minaci', minAngle);
+    if (maxAngle) params.set('maxaci', maxAngle);
+    if (minAccel) params.set('minivme', minAccel);
+    if (maxAccel) params.set('maxivme', maxAccel);
+    if (speed) params.set('hiz', speed);
 
     const cVal = charSelect === 'other' ? charNameOther : charSelect;
     if (cVal && cVal !== 'karakter') params.set('char', cVal);
@@ -858,6 +878,37 @@ function App() {
                 <input type="text" value={authList} onChange={(e) => setAuthList(e.target.value)} placeholder="mod1,mod2" />
               </div>
             </div>
+
+            <h3 className="card-subtitle" style={{ marginTop: '24px', fontSize: '15px', color: 'var(--text-h)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>⚡ Gelişmiş Uçuş Fizik Ayarları (Süzülme Kontrolü)</h3>
+            <div className="form-grid" style={{ marginTop: '12px', gap: '20px' }}>
+              <div className="form-group">
+                <label>Yer Çekimi (Dikey İvme)</label>
+                <input type="number" step="0.005" min="0.001" max="0.5" value={gravity} onChange={(e) => setGravity(e.target.value)} placeholder="0.025" />
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>Düşüş hızı. Düşük değerler karakterlerin daha çok süzülmesini sağlar. (Örn: 0.025)</span>
+              </div>
+              <div className="form-group">
+                <label>Temel Atlama Hızı</label>
+                <input type="number" step="0.5" min="0.5" max="20" value={speed} onChange={(e) => setSpeed(e.target.value)} placeholder="4" />
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>Karakterin başlangıç fırlatılma hızı. (Örn: 4)</span>
+              </div>
+              <div className="form-group">
+                <label>Atlama Açısı (Min / Max Derece)</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input type="number" value={minAngle} onChange={(e) => setMinAngle(e.target.value)} placeholder="25" title="Minimum Açı" style={{ flex: 1 }} />
+                  <input type="number" value={maxAngle} onChange={(e) => setMaxAngle(e.target.value)} placeholder="55" title="Maksimum Açı" style={{ flex: 1 }} />
+                </div>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>Derece cinsinden fırlatma açıları (Örn: 25 - 55).</span>
+              </div>
+              <div className="form-group">
+                <label>Yatay İvmelenme (Min / Max)</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input type="number" step="0.005" value={minAccel} onChange={(e) => setMinAccel(e.target.value)} placeholder="0.01" title="Minimum Yatay İvme" style={{ flex: 1 }} />
+                  <input type="number" step="0.005" value={maxAccel} onChange={(e) => setMaxAccel(e.target.value)} placeholder="0.03" title="Maksimum Yatay İvme" style={{ flex: 1 }} />
+                </div>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>Karakterin havada yatay ivmelenme miktarı (Örn: 0.01 - 0.03).</span>
+              </div>
+            </div>
+
 
             <div className="form-grid" style={{ marginTop: '20px' }}>
               <div className="form-group">
