@@ -32,6 +32,8 @@ function App() {
   const [minAccel, setMinAccel] = useState(() => localStorage.getItem('paira_minaccel') || '0.01');
   const [maxAccel, setMaxAccel] = useState(() => localStorage.getItem('paira_maxaccel') || '0.03');
   const [speed, setSpeed] = useState(() => localStorage.getItem('paira_speed') || '4');
+  const [butterflySize, setButterflySize] = useState(() => localStorage.getItem('paira_butterflysize') || '60');
+
 
   const [charNameOther, setCharNameOther] = useState('');
   const [targetNameOther, setTargetNameOther] = useState('');
@@ -245,12 +247,13 @@ function App() {
     localStorage.setItem('paira_minaccel', minAccel);
     localStorage.setItem('paira_maxaccel', maxAccel);
     localStorage.setItem('paira_speed', speed);
+    localStorage.setItem('paira_butterflysize', butterflySize);
     localStorage.setItem('paira_raffle_cost', raffleEntryCost.toString());
     localStorage.setItem('paira_raffle_level', raffleMinLevel.toString());
     localStorage.setItem('paira_raffle_history', JSON.stringify(raffleHistory));
     localStorage.setItem('paira_butterfly_min_time', butterflyMinTime.toString());
     localStorage.setItem('paira_butterfly_max_time', butterflyMaxTime.toString());
-  }, [devId, broadcasterSecret, channelName, broadcasterUserId, authList, poolWidth, charWidth, charSelect, targetSelect, soundSelect, gravity, minAngle, maxAngle, minAccel, maxAccel, speed, raffleEntryCost, raffleMinLevel, raffleHistory, butterflyMinTime, butterflyMaxTime]);
+  }, [devId, broadcasterSecret, channelName, broadcasterUserId, authList, poolWidth, charWidth, charSelect, targetSelect, soundSelect, gravity, minAngle, maxAngle, minAccel, maxAccel, speed, butterflySize, raffleEntryCost, raffleMinLevel, raffleHistory, butterflyMinTime, butterflyMaxTime]);
 
 
   const handleRaffleJoinAttempt = async (user) => {
@@ -616,6 +619,7 @@ function App() {
     if (minAccel) params.set('minivme', minAccel);
     if (maxAccel) params.set('maxivme', maxAccel);
     if (speed) params.set('hiz', speed);
+    if (butterflySize) params.set('butterflysize', butterflySize);
 
     const cVal = charSelect === 'other' ? charNameOther : charSelect;
     if (cVal && cVal !== 'karakter') params.set('char', cVal);
@@ -1047,6 +1051,16 @@ function App() {
                   min="1"
                   value={butterflyMaxTime} 
                   onChange={(e) => setButterflyMaxTime(Math.max(1, parseInt(e.target.value) || 1))} 
+                />
+              </div>
+              <div className="form-group">
+                <label>Kelebek Boyutu (px)</label>
+                <input 
+                  type="number" 
+                  min="20"
+                  max="300"
+                  value={butterflySize} 
+                  onChange={(e) => setButterflySize(Math.max(20, parseInt(e.target.value) || 60))} 
                 />
               </div>
               <div className="form-group" style={{ justifyContent: 'flex-end', paddingBottom: '4px' }}>

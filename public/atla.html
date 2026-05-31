@@ -165,6 +165,8 @@
             z-index: 150;
             pointer-events: none;
             will-change: transform;
+            transform: scale(var(--butterfly-scale, 1));
+            transform-origin: center center;
         }
 
         .butterfly {
@@ -363,6 +365,7 @@
             const paramCharWidth = parseInt(urlParams.get('charwidth')) || 120;
             const paramEmojiCharWidth = parseInt(urlParams.get('emojicharwidth')) || 92;
             const paramGroupCharWidth = parseInt(urlParams.get('groupcharwidth')) || 90;
+            const paramButterflySize = parseInt(urlParams.get('butterflysize')) || parseInt(urlParams.get('kelebekboyut')) || 60;
 
             const skorGosterici = document.createElement('div');
             skorGosterici.id = 'skor-gosterici';
@@ -3585,6 +3588,8 @@
                 const container = document.createElement('div');
                 container.className = `butterfly-container butterfly-${chosen.type}`;
                 container.id = 'butterfly-active';
+                const scaleRatio = paramButterflySize / 60;
+                container.style.setProperty('--butterfly-scale', scaleRatio);
                 
                 const butterfly = document.createElement('div');
                 butterfly.className = `butterfly butterfly-${chosen.type}`;
