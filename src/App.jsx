@@ -3326,8 +3326,9 @@ async function sendChatMessage(message, isRetry = false) {
     const chatPayload = {
       broadcaster_user_id: parseInt(broadcasterUserId),
       content: message.substring(0, 500),
-      type: "bot"
+      type: "user"
     };
+
 
     const response = await fetch('https://api.kick.com/public/v1/chat', {
       method: 'POST',
