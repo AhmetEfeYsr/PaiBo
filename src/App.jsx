@@ -65,7 +65,9 @@ function App() {
   });
   const [butterflyMinTime, setButterflyMinTime] = useState(() => Number(localStorage.getItem('paira_butterfly_min_time')) || 2);
   const [butterflyMaxTime, setButterflyMaxTime] = useState(() => Number(localStorage.getItem('paira_butterfly_max_time')) || 6);
-  const [activePlugins, setActivePlugins] = useState({ butterfly: true, blackjack: true, robbery: true, trivia: true });
+  const [activePlugins, setActivePlugins] = useState({ atla: true, butterfly: true, blackjack: true, robbery: true, trivia: true });
+  const [atlaSettingsOpen, setAtlaSettingsOpen] = useState(false);
+  const [butterflySettingsOpen, setButterflySettingsOpen] = useState(false);
   const [customCommands, setCustomCommands] = useState([]);
   const [customCmdName, setCustomCmdName] = useState('');
   const [customCmdResponse, setCustomCmdResponse] = useState('');
@@ -400,7 +402,7 @@ function App() {
     };
 
     const raffleUsers = new Set();
-    const plugins = { butterfly: true, blackjack: true, robbery: true, trivia: true };
+    const plugins = { atla: true, butterfly: true, blackjack: true, robbery: true, trivia: true };
     const cmds = {};
     let activeThemeItem = null;
     let activeWidgetItem = null;
@@ -856,174 +858,23 @@ function App() {
               </div>
             </div>
 
-            <div className="form-grid" style={{ marginBottom: '24px' }}>
-              <div className="form-group">
-                <label>Chatroom ID (buid)</label>
-                <input type="text" value={broadcasterUserId} readOnly placeholder="Otomatik doldurulur" />
-              </div>
-              <div className="form-group">
-                <label>Gizli Anahtar (Secret)</label>
-                <input type="password" value={broadcasterSecret} readOnly placeholder="Otomatik doldurulur" />
-              </div>
-            </div>
-
-            <h2 className="card-title" style={{ marginTop: '40px' }}>2. Adım: Görsel ve Fizik Ayarları</h2>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Genişlik (PoolWidth)</label>
-                <input type="number" value={poolWidth} onChange={(e) => setPoolWidth(e.target.value)} placeholder="300" />
-              </div>
-              <div className="form-group">
-                <label>Karakter Boyutu (CharWidth)</label>
-                <input type="number" value={charWidth} onChange={(e) => setCharWidth(e.target.value)} placeholder="120" />
-              </div>
-              <div className="form-group">
-                <label>Yetkili Listesi (Virgülle Ayırın)</label>
-                <input type="text" value={authList} onChange={(e) => setAuthList(e.target.value)} placeholder="mod1,mod2" />
-              </div>
-            </div>
-
-            <h3 className="card-subtitle" style={{ marginTop: '24px', fontSize: '15px', color: 'var(--text-h)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>⚡ Gelişmiş Uçuş Fizik Ayarları (Süzülme Kontrolü)</h3>
-            <div className="form-grid" style={{ marginTop: '12px', gap: '20px' }}>
-              <div className="form-group">
-                <label>Yer Çekimi (Dikey İvme)</label>
-                <input type="number" step="0.005" min="0.001" max="0.5" value={gravity} onChange={(e) => setGravity(e.target.value)} placeholder="0.025" />
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>Düşüş hızı. Düşük değerler karakterlerin daha çok süzülmesini sağlar. (Örn: 0.025)</span>
-              </div>
-              <div className="form-group">
-                <label>Temel Atlama Hızı</label>
-                <input type="number" step="0.5" min="0.5" max="20" value={speed} onChange={(e) => setSpeed(e.target.value)} placeholder="4" />
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>Karakterin başlangıç fırlatılma hızı. (Örn: 4)</span>
-              </div>
-              <div className="form-group">
-                <label>Atlama Açısı (Min / Max Derece)</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input type="number" value={minAngle} onChange={(e) => setMinAngle(e.target.value)} placeholder="25" title="Minimum Açı" style={{ flex: 1 }} />
-                  <input type="number" value={maxAngle} onChange={(e) => setMaxAngle(e.target.value)} placeholder="55" title="Maksimum Açı" style={{ flex: 1 }} />
+            <details className="advanced-credentials" style={{ marginTop: '16px', background: 'rgba(0,0,0,0.15)', padding: '16px', borderRadius: '12px', border: '1px solid var(--lilac-muted)' }}>
+              <summary style={{ cursor: 'pointer', fontWeight: '600', color: 'var(--lilac)', fontSize: '14px', outline: 'none', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                ⚙️ Gelişmiş Bağlantı Detayları (Teknik Parametreler)
+              </summary>
+              <div className="form-grid" style={{ marginTop: '16px', marginBottom: '0' }}>
+                <div className="form-group" style={{ marginBottom: '0' }}>
+                  <label>Chatroom ID (buid)</label>
+                  <input type="text" value={broadcasterUserId} readOnly placeholder="Otomatik doldurulur" />
                 </div>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>Derece cinsinden fırlatma açıları (Örn: 25 - 55).</span>
-              </div>
-              <div className="form-group">
-                <label>Yatay İvmelenme (Min / Max)</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input type="number" step="0.005" value={minAccel} onChange={(e) => setMinAccel(e.target.value)} placeholder="0.01" title="Minimum Yatay İvme" style={{ flex: 1 }} />
-                  <input type="number" step="0.005" value={maxAccel} onChange={(e) => setMaxAccel(e.target.value)} placeholder="0.03" title="Maksimum Yatay İvme" style={{ flex: 1 }} />
+                <div className="form-group" style={{ marginBottom: '0' }}>
+                  <label>Gizli Anahtar (Secret)</label>
+                  <input type="password" value={broadcasterSecret} readOnly placeholder="Otomatik doldurulur" />
                 </div>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>Karakterin havada yatay ivmelenme miktarı (Örn: 0.01 - 0.03).</span>
               </div>
-            </div>
+            </details>
 
-
-            <div className="form-grid" style={{ marginTop: '20px' }}>
-              <div className="form-group">
-                <label>Karakter Seçimi</label>
-                <div className="visual-selector-grid">
-                  {[
-                    { val: 'karakter', label: 'Kedy' },
-                    { val: 'askersincap', label: 'Sincap' },
-                    { val: 'askerkedy', label: 'A. Kedi' },
-                    { val: 'steve', label: 'Steve' },
-                    { val: 'civciv', label: 'Civciv' },
-                    { val: 'papagan', label: 'Papağan' },
-                    { val: 'peri', label: 'Peri' },
-                    { val: 'other', label: 'Özel' }
-                  ].map(item => (
-                    <div 
-                      key={item.val} 
-                      className={`visual-selector-item ${charSelect === item.val ? 'active' : ''}`}
-                      onClick={() => setCharSelect(item.val)}
-                      title={item.label}
-                    >
-                      {item.val !== 'other' ? (
-                        <img src={getCharPreviewSrc(item.val)} alt={item.label} onError={(e) => e.target.style.display = 'none'} />
-                      ) : (
-                        <div className="sound-icon">📁</div>
-                      )}
-                      <span>{item.label}</span>
-                    </div>
-                  ))}
-                </div>
-                {charSelect === 'other' && (
-                  <div style={{ marginTop: '12px' }}>
-                    <input 
-                      type="text" 
-                      value={charNameOther} 
-                      onChange={(e) => setCharNameOther(e.target.value)} 
-                      placeholder="Görsel dosya adı girin (örn: custom.png)" 
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="form-group">
-                <label>Hedef Seçimi</label>
-                <div className="visual-selector-grid">
-                  {[
-                    { val: 'havuz', label: 'Havuz' },
-                    { val: 'bulut', label: 'Bulut' },
-                    { val: 'trambolin', label: 'Trambolin' },
-                    { val: 'other', label: 'Özel' }
-                  ].map(item => (
-                    <div 
-                      key={item.val} 
-                      className={`visual-selector-item ${targetSelect === item.val ? 'active' : ''}`}
-                      onClick={() => setTargetSelect(item.val)}
-                      title={item.label}
-                    >
-                      {item.val !== 'other' ? (
-                        <img src={getTargetPreviewSrc(item.val)} alt={item.label} onError={(e) => e.target.style.display = 'none'} />
-                      ) : (
-                        <div className="sound-icon">📁</div>
-                      )}
-                      <span>{item.label}</span>
-                    </div>
-                  ))}
-                </div>
-                {targetSelect === 'other' && (
-                  <div style={{ marginTop: '12px' }}>
-                    <input 
-                      type="text" 
-                      value={targetNameOther} 
-                      onChange={(e) => setTargetNameOther(e.target.value)} 
-                      placeholder="Hedef dosya adı girin (örn: custom_pool.png)" 
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="form-group">
-                <label>Atlama Sesi</label>
-                <div className="visual-selector-grid">
-                  {[
-                    { val: 'vada', label: 'Vada', icon: '🔊' },
-                    { val: 'selcuk', label: 'Selçuk', icon: '🔊' },
-                    { val: 'other', label: 'Özel', icon: '🎵' }
-                  ].map(item => (
-                    <div 
-                      key={item.val} 
-                      className={`visual-selector-item ${soundSelect === item.val ? 'active' : ''}`}
-                      onClick={() => setSoundSelect(item.val)}
-                      title={item.label}
-                    >
-                      <div className="sound-icon">{item.icon}</div>
-                      <span>{item.label}</span>
-                    </div>
-                  ))}
-                </div>
-                {soundSelect === 'other' && (
-                  <div style={{ marginTop: '12px' }}>
-                    <input 
-                      type="text" 
-                      value={soundNameOther} 
-                      onChange={(e) => setSoundNameOther(e.target.value)} 
-                      placeholder="Ses dosya adı girin (örn: custom.mp3)" 
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <h2 className="card-title" style={{ marginTop: '40px' }}>3. Adım: Lokal WAL Dosya Kaydı (İsteğe Bağlı)</h2>
+            <h2 className="card-title" style={{ marginTop: '40px' }}>2. Adım: Lokal WAL Dosya Kaydı (İsteğe Bağlı)</h2>
             <div style={{ marginBottom: '32px' }}>
               <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '14px', lineHeight: '1.6' }}>
                 Verilerinizin masaüstünüzde <code>paira_wal.log</code> dosyasına canlı olarak yazılmasını istiyorsanız bir kereye mahsus dosya konumu belirleyebilirsiniz:
@@ -1031,43 +882,6 @@ function App() {
               <button className="btn btn-secondary" onClick={handleSelectLocalFile}>
                 📁 Log Dosyası Konumu Seç
               </button>
-            </div>
-
-            <h2 className="card-title" style={{ marginTop: '40px' }}>4. Adım: Kelebek Oyunu Ayarları 🦋</h2>
-            <div className="form-grid" style={{ marginBottom: '32px' }}>
-              <div className="form-group">
-                <label>Minimum Belirme Süresi (Dakika)</label>
-                <input 
-                  type="number" 
-                  min="1"
-                  value={butterflyMinTime} 
-                  onChange={(e) => setButterflyMinTime(Math.max(1, parseInt(e.target.value) || 1))} 
-                />
-              </div>
-              <div className="form-group">
-                <label>Maksimum Belirme Süresi (Dakika)</label>
-                <input 
-                  type="number" 
-                  min="1"
-                  value={butterflyMaxTime} 
-                  onChange={(e) => setButterflyMaxTime(Math.max(1, parseInt(e.target.value) || 1))} 
-                />
-              </div>
-              <div className="form-group">
-                <label>Kelebek Boyutu (px)</label>
-                <input 
-                  type="number" 
-                  min="20"
-                  max="300"
-                  value={butterflySize} 
-                  onChange={(e) => setButterflySize(Math.max(20, parseInt(e.target.value) || 60))} 
-                />
-              </div>
-              <div className="form-group" style={{ justifyContent: 'flex-end', paddingBottom: '4px' }}>
-                <button className="btn btn-secondary" onClick={handleSaveButterflySettings} style={{ height: '48px' }}>
-                  💾 Ayarları Kaydet
-                </button>
-              </div>
             </div>
 
             <button className="btn btn-primary" onClick={handleGenerateUrl} style={{ width: '100%', padding: '16px', fontSize: '16px' }}>
@@ -1492,6 +1306,69 @@ function App() {
                     gap: '20px',
                     marginTop: '12px'
                   }}>
+                    {/* Atla Oyunu Card */}
+                    <div style={{
+                      background: 'var(--card-bg)',
+                      border: 'var(--glass-border)',
+                      borderRadius: '16px',
+                      padding: '20px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      gap: '16px',
+                      boxShadow: 'var(--glass-shadow)',
+                      transition: 'all 0.3s ease',
+                      position: 'relative',
+                      overflow: 'hidden'
+                    }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '28px' }}>🏃‍♂️</span>
+                          <h3 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--lilac)' }}>Atla Oyunu</h3>
+                        </div>
+                        <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+                          Chat'teki "!atla" komutu ile karakterlerin yayında süzülerek hedefe uçtuğu temel overlay oyunu.
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            color: activePlugins.atla ? 'var(--success)' : 'var(--danger)',
+                            background: activePlugins.atla ? 'rgba(46, 204, 113, 0.1)' : 'rgba(231, 76, 60, 0.1)',
+                            padding: '4px 10px',
+                            borderRadius: '8px'
+                          }}>
+                            {activePlugins.atla ? '● AKTİF' : '○ DEVRE DIŞI'}
+                          </span>
+                          <button
+                            className={`btn ${activePlugins.atla ? 'btn-danger' : 'btn-primary'}`}
+                            style={{ padding: '8px 16px', fontSize: '13px', height: '36px', borderRadius: '8px' }}
+                            onClick={async () => {
+                              await appendIndexedDBLog({
+                                type: "TOGGLE_PLUGIN",
+                                pluginId: "atla",
+                                enabled: !activePlugins.atla
+                              });
+                            }}
+                          >
+                            {activePlugins.atla ? 'Devre Dışı Bırak' : 'Etkinleştir'}
+                          </button>
+                        </div>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ width: '100%', padding: '6px 12px', fontSize: '12px', height: '32px', borderRadius: '8px' }}
+                          onClick={() => {
+                            setAtlaSettingsOpen(!atlaSettingsOpen);
+                            setButterflySettingsOpen(false);
+                          }}
+                        >
+                          {atlaSettingsOpen ? '▲ Ayarları Kapat' : '⚙️ Ayarları Yapılandır'}
+                        </button>
+                      </div>
+                    </div>
+
                     {/* Kelebek Oyunu Card */}
                     <div style={{
                       background: 'var(--card-bg)',
@@ -1516,29 +1393,41 @@ function App() {
                           Ekranda uçuşan rengarenk kelebekleri yakalama, ticaret (!takas), envanter (!kelebekenvanter) ve kozmik birleştirme oyunu.
                         </p>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          color: activePlugins.butterfly ? 'var(--success)' : 'var(--danger)',
-                          background: activePlugins.butterfly ? 'rgba(46, 204, 113, 0.1)' : 'rgba(231, 76, 60, 0.1)',
-                          padding: '4px 10px',
-                          borderRadius: '8px'
-                        }}>
-                          {activePlugins.butterfly ? '● AKTİF' : '○ DEVRE DIŞI'}
-                        </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            color: activePlugins.butterfly ? 'var(--success)' : 'var(--danger)',
+                            background: activePlugins.butterfly ? 'rgba(46, 204, 113, 0.1)' : 'rgba(231, 76, 60, 0.1)',
+                            padding: '4px 10px',
+                            borderRadius: '8px'
+                          }}>
+                            {activePlugins.butterfly ? '● AKTİF' : '○ DEVRE DIŞI'}
+                          </span>
+                          <button
+                            className={`btn ${activePlugins.butterfly ? 'btn-danger' : 'btn-primary'}`}
+                            style={{ padding: '8px 16px', fontSize: '13px', height: '36px', borderRadius: '8px' }}
+                            onClick={async () => {
+                              await appendIndexedDBLog({
+                                type: "TOGGLE_PLUGIN",
+                                pluginId: "butterfly",
+                                enabled: !activePlugins.butterfly
+                              });
+                            }}
+                          >
+                            {activePlugins.butterfly ? 'Devre Dışı Bırak' : 'Etkinleştir'}
+                          </button>
+                        </div>
                         <button
-                          className={`btn ${activePlugins.butterfly ? 'btn-danger' : 'btn-primary'}`}
-                          style={{ padding: '8px 16px', fontSize: '13px', height: '36px', borderRadius: '8px' }}
-                          onClick={async () => {
-                            await appendIndexedDBLog({
-                              type: "TOGGLE_PLUGIN",
-                              pluginId: "butterfly",
-                              enabled: !activePlugins.butterfly
-                            });
+                          className="btn btn-secondary"
+                          style={{ width: '100%', padding: '6px 12px', fontSize: '12px', height: '32px', borderRadius: '8px' }}
+                          onClick={() => {
+                            setButterflySettingsOpen(!butterflySettingsOpen);
+                            setAtlaSettingsOpen(false);
                           }}
                         >
-                          {activePlugins.butterfly ? 'Devre Dışı Bırak' : 'Etkinleştir'}
+                          {butterflySettingsOpen ? '▲ Ayarları Kapat' : '⚙️ Ayarları Yapılandır'}
                         </button>
                       </div>
                     </div>
@@ -1696,6 +1585,208 @@ function App() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Expandable Settings Panels below the grid */}
+                  {atlaSettingsOpen && (
+                    <div className="panel-card fade-in" style={{ marginTop: '24px', border: '1px solid var(--neon-purple)', background: 'rgba(20, 10, 35, 0.65)' }}>
+                      <h2 className="card-title" style={{ color: 'var(--lilac)' }}>⚙️ Atla Oyunu Fizik & Görsel Ayarları</h2>
+                      
+                      <div className="form-grid" style={{ marginBottom: '24px' }}>
+                        <div className="form-group">
+                          <label>Genişlik (PoolWidth)</label>
+                          <input type="number" value={poolWidth} onChange={(e) => setPoolWidth(e.target.value)} placeholder="300" />
+                        </div>
+                        <div className="form-group">
+                          <label>Karakter Boyutu (CharWidth)</label>
+                          <input type="number" value={charWidth} onChange={(e) => setCharWidth(e.target.value)} placeholder="120" />
+                        </div>
+                        <div className="form-group">
+                          <label>Yetkili Listesi (Virgülle Ayırın)</label>
+                          <input type="text" value={authList} onChange={(e) => setAuthList(e.target.value)} placeholder="mod1,mod2" />
+                        </div>
+                      </div>
+
+                      <h3 className="card-subtitle" style={{ fontSize: '14px', color: 'var(--lilac)', fontWeight: '600', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>⚡ Gelişmiş Uçuş Fizik Ayarları (Süzülme Kontrolü)</h3>
+                      <div className="form-grid" style={{ gap: '20px', marginBottom: '24px' }}>
+                        <div className="form-group">
+                          <label>Yer Çekimi (Dikey İvme)</label>
+                          <input type="number" step="0.005" min="0.001" max="0.5" value={gravity} onChange={(e) => setGravity(e.target.value)} placeholder="0.025" />
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>Düşüş hızı. Düşük değerler karakterlerin daha çok süzülmesini sağlar. (Örn: 0.025)</span>
+                        </div>
+                        <div className="form-group">
+                          <label>Temel Atlama Hızı</label>
+                          <input type="number" step="0.5" min="0.5" max="20" value={speed} onChange={(e) => setSpeed(e.target.value)} placeholder="4" />
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>Karakterin başlangıç fırlatılma hızı. (Örn: 4)</span>
+                        </div>
+                        <div className="form-group">
+                          <label>Atlama Açısı (Min / Max Derece)</label>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <input type="number" value={minAngle} onChange={(e) => setMinAngle(e.target.value)} placeholder="25" title="Minimum Açı" style={{ flex: 1 }} />
+                            <input type="number" value={maxAngle} onChange={(e) => setMaxAngle(e.target.value)} placeholder="55" title="Maksimum Açı" style={{ flex: 1 }} />
+                          </div>
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>Derece cinsinden fırlatma açıları (Örn: 25 - 55).</span>
+                        </div>
+                        <div className="form-group">
+                          <label>Yatay İvmelenme (Min / Max)</label>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <input type="number" step="0.005" value={minAccel} onChange={(e) => setMinAccel(e.target.value)} placeholder="0.01" title="Minimum Yatay İvme" style={{ flex: 1 }} />
+                            <input type="number" step="0.005" value={maxAccel} onChange={(e) => setMaxAccel(e.target.value)} placeholder="0.03" title="Maksimum Yatay İvme" style={{ flex: 1 }} />
+                          </div>
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>Karakterin havada yatay ivmelenme miktarı (Örn: 0.01 - 0.03).</span>
+                        </div>
+                      </div>
+
+                      <div className="form-grid">
+                        <div className="form-group">
+                          <label>Karakter Seçimi</label>
+                          <div className="visual-selector-grid">
+                            {[
+                              { val: 'karakter', label: 'Kedy' },
+                              { val: 'askersincap', label: 'Sincap' },
+                              { val: 'askerkedy', label: 'A. Kedi' },
+                              { val: 'steve', label: 'Steve' },
+                              { val: 'civciv', label: 'Civciv' },
+                              { val: 'papagan', label: 'Papağan' },
+                              { val: 'peri', label: 'Peri' },
+                              { val: 'other', label: 'Özel' }
+                            ].map(item => (
+                              <div 
+                                key={item.val} 
+                                className={`visual-selector-item ${charSelect === item.val ? 'active' : ''}`}
+                                onClick={() => setCharSelect(item.val)}
+                                title={item.label}
+                              >
+                                {item.val !== 'other' ? (
+                                  <img src={getCharPreviewSrc(item.val)} alt={item.label} onError={(e) => e.target.style.display = 'none'} />
+                                ) : (
+                                  <div className="sound-icon">📁</div>
+                                )}
+                                <span>{item.label}</span>
+                              </div>
+                            ))}
+                          </div>
+                          {charSelect === 'other' && (
+                            <div style={{ marginTop: '12px' }}>
+                              <input 
+                                type="text" 
+                                value={charNameOther} 
+                                onChange={(e) => setCharNameOther(e.target.value)} 
+                                placeholder="Görsel dosya adı girin (örn: custom.png)" 
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="form-group">
+                          <label>Hedef Seçimi</label>
+                          <div className="visual-selector-grid">
+                            {[
+                              { val: 'havuz', label: 'Havuz' },
+                              { val: 'bulut', label: 'Bulut' },
+                              { val: 'trambolin', label: 'Trambolin' },
+                              { val: 'other', label: 'Özel' }
+                            ].map(item => (
+                              <div 
+                                key={item.val} 
+                                className={`visual-selector-item ${targetSelect === item.val ? 'active' : ''}`}
+                                onClick={() => setTargetSelect(item.val)}
+                                title={item.label}
+                              >
+                                {item.val !== 'other' ? (
+                                  <img src={getTargetPreviewSrc(item.val)} alt={item.label} onError={(e) => e.target.style.display = 'none'} />
+                                ) : (
+                                  <div className="sound-icon">📁</div>
+                                )}
+                                <span>{item.label}</span>
+                              </div>
+                            ))}
+                          </div>
+                          {targetSelect === 'other' && (
+                            <div style={{ marginTop: '12px' }}>
+                              <input 
+                                type="text" 
+                                value={targetNameOther} 
+                                onChange={(e) => setTargetNameOther(e.target.value)} 
+                                placeholder="Hedef dosya adı girin (örn: custom_pool.png)" 
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="form-group">
+                          <label>Atlama Sesi</label>
+                          <div className="visual-selector-grid">
+                            {[
+                              { val: 'vada', label: 'Vada', icon: '🔊' },
+                              { val: 'selcuk', label: 'Selçuk', icon: '🔊' },
+                              { val: 'other', label: 'Özel', icon: '🎵' }
+                            ].map(item => (
+                              <div 
+                                key={item.val} 
+                                className={`visual-selector-item ${soundSelect === item.val ? 'active' : ''}`}
+                                onClick={() => setSoundSelect(item.val)}
+                                title={item.label}
+                              >
+                                <div className="sound-icon">{item.icon}</div>
+                                <span>{item.label}</span>
+                              </div>
+                            ))}
+                          </div>
+                          {soundSelect === 'other' && (
+                            <div style={{ marginTop: '12px' }}>
+                              <input 
+                                type="text" 
+                                value={soundNameOther} 
+                                onChange={(e) => setSoundNameOther(e.target.value)} 
+                                placeholder="Ses dosya adı girin (örn: custom.mp3)" 
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {butterflySettingsOpen && (
+                    <div className="panel-card fade-in" style={{ marginTop: '24px', border: '1px solid var(--neon-purple)', background: 'rgba(20, 10, 35, 0.65)' }}>
+                      <h2 className="card-title" style={{ color: 'var(--lilac)' }}>⚙️ Kelebek Oyunu Ayarları 🦋</h2>
+                      <div className="form-grid" style={{ marginBottom: '16px' }}>
+                        <div className="form-group">
+                          <label>Minimum Belirme Süresi (Dakika)</label>
+                          <input 
+                            type="number" 
+                            min="1"
+                            value={butterflyMinTime} 
+                            onChange={(e) => setButterflyMinTime(Math.max(1, parseInt(e.target.value) || 1))} 
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Maksimum Belirme Süresi (Dakika)</label>
+                          <input 
+                            type="number" 
+                            min="1"
+                            value={butterflyMaxTime} 
+                            onChange={(e) => setButterflyMaxTime(Math.max(1, parseInt(e.target.value) || 1))} 
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Kelebek Boyutu (px)</label>
+                          <input 
+                            type="number" 
+                            min="20"
+                            max="300"
+                            value={butterflySize} 
+                            onChange={(e) => setButterflySize(Math.max(20, parseInt(e.target.value) || 60))} 
+                          />
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <button className="btn btn-secondary" onClick={handleSaveButterflySettings} style={{ height: '48px' }}>
+                          💾 Ayarları Kaydet
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Custom Commands Grid */}

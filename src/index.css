@@ -857,3 +857,31 @@ body::before {
   box-shadow: none !important;
 }
 
+/* Gelişmiş Bağlantı Detayları details styles */
+details.advanced-credentials {
+  transition: all 0.3s ease;
+}
+details.advanced-credentials[open] {
+  border-color: rgba(178, 102, 255, 0.45) !important;
+  box-shadow: 0 0 15px rgba(178, 102, 255, 0.15);
+}
+details.advanced-credentials summary {
+  list-style: none;
+  transition: color 0.2s ease;
+}
+details.advanced-credentials summary::-webkit-details-marker {
+  display: none;
+}
+details.advanced-credentials summary:hover {
+  color: var(--neon-purple) !important;
+}
+
+/* Animations and responsive tweaks */
+.fade-in {
+  animation: fadeIn 0.35s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+

@@ -477,7 +477,7 @@
             let nextButterflyTimeout = null;
             
             // 🧩 Plugin Marketplace & Custom Commands State
-            const activePlugins = new Set(["butterfly", "blackjack", "robbery", "trivia"]);
+            const activePlugins = new Set(["atla", "butterfly", "blackjack", "robbery", "trivia"]);
             const customCommands = new Map();
             const globalMarketItems = new Map();
             const disabledMarketItems = new Set();
@@ -2468,6 +2468,7 @@
                                 }
 
                                 if (cleanContent === '!topluatla') {
+                                    if (!activePlugins.has("atla")) return;
                                     topluAtlamaAktif = true;
                                     atlamaSirasi = [];
                                     console.warn("🟢 TOPLU ATLAMA MODU AÇIK! '!atla' komutları sıraya alınıyor.");
@@ -2476,6 +2477,7 @@
                                 }
 
                                 if (cleanContent === '!atlat') {
+                                    if (!activePlugins.has("atla")) return;
                                     if (atlamaSirasi.length === 0) {
                                         console.warn("🟡 '!atlat' komutu alındı ama sıra boş.");
                                         sendChatMessageToKick(`⚠️ Sırada kimse yok! Önce '!topluatla' ile modu açın, herkes '!atla' yazsın.`);
@@ -2491,6 +2493,7 @@
                                 }
 
                                 if (cleanContent === '!topluiptal') {
+                                    if (!activePlugins.has("atla")) return;
                                     if (topluAtlamaAktif) {
                                         const iptalEdilen = atlamaSirasi.length;
                                         topluAtlamaAktif = false;
@@ -3406,6 +3409,7 @@
 
                             // --- ATLAMA COMMANDS ---
                             if (cleanContent === '!atla' || cleanContent.startsWith('!atla ')) {
+                                if (!activePlugins.has("atla")) return;
                                 let emojiId = null;
                                 const emoteRegex = /\[emote:(\d+):.*?\]/;
                                 const match = content.match(emoteRegex);
