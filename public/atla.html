@@ -3947,7 +3947,8 @@
                         console.log(`🔍 '${paramChannel}' kanalı için AWS API'den Chatroom ID aranıyor...`);
                         skorGosterici.textContent = `Kanal ID'si alınıyor...`;
                         
-                        const response = await fetch(`${SERVERLESS_CHANNEL_API}?channel=${paramChannel}`);
+                        const encodedChannel = encodeURIComponent(paramChannel.trim());
+                        const response = await fetch(`${SERVERLESS_CHANNEL_API}?channel=${encodedChannel}`);
                         const data = await response.json();
                         
                         if (data && data.chatroom_id) {

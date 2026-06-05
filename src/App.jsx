@@ -205,7 +205,8 @@ function App() {
     if (window.location.hash) {
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       if (hashParams.get('success') === 'true') {
-        const c = hashParams.get('channel') || '';
+        const rawChannel = hashParams.get('channel') || '';
+        const c = decodeURIComponent(rawChannel);
         const b = hashParams.get('buid') || '';
         const s = hashParams.get('secret') || '';
         
@@ -545,15 +546,16 @@ function App() {
       alert("Lütfen önce kanal adınızı yazın!");
       return;
     }
-    const ch = devId.trim();
+    const encodedChannel = encodeURIComponent(devId.trim());
     try {
-      const response = await fetch(`${AWS_CHANNEL_API_URL}?channel=${ch}`);
+      const response = await fetch(`${AWS_CHANNEL_API_URL}?channel=${encodedChannel}`);
       const data = await response.json();
       if (!data || !data.broadcaster_user_id) {
         alert("Kanal bulunamadı veya Chatroom ID okunamadı!");
         return;
       }
       const buid = data.broadcaster_user_id;
+      const decodedChannel = data.channel ? decodeURIComponent(data.channel) : devId.trim();
 
       // PKCE code verifier ve challenge üretimi
       const codeVerifier = generateCodeVerifier();
@@ -561,7 +563,7 @@ function App() {
 
       const redirectBase = `${window.location.origin}${window.location.pathname}`;
       // stateStr içerisine codeVerifier'ı da ekleyelim (parts[3] olarak)
-      const stateStr = encodeURIComponent(`${ch}|${buid}|${redirectBase}|${codeVerifier}`);
+      const stateStr = encodeURIComponent(`${decodedChannel}|${buid}|${redirectBase}|${codeVerifier}`);
       
       const authUrl = `https://id.kick.com/oauth/authorize?response_type=code&client_id=${KICK_CLIENT_ID}&redirect_uri=${encodeURIComponent(KICK_OAUTH_CALLBACK_URL)}&scope=user:read%20chat:write&state=${stateStr}&code_challenge=${codeChallenge}&code_challenge_method=S256`;
       window.location.href = authUrl;
